@@ -267,7 +267,7 @@
           const data = await response.json();
           if (data.rewritten_news) {
             const formattedNews = data.rewritten_news.replace(/\[PARAGRAPH_BREAK\]/g, "\n");
-            resultBox.innerHTML = `<strong>Result:</strong>\n\n${formattedNews}`;
+            resultBox.innerHTML = `${formattedNews}`;
           } else {
             resultBox.innerHTML = `<span style='color:red;'>Error: ${data.error || 'Unknown error occurred'}</span>`;
           }
@@ -299,15 +299,56 @@
     }
 
     async function publishNews() {
-      const news = document.getElementById("news").value.trim();
       const resultBox = document.getElementById("resultBox");
+      const rewrittenNews = resultBox.innerText.trim();
 
-      if (!news) {
-        resultBox.innerHTML = "<span style='color:red;'>Please paste a news.</span>";
+      if (!rewrittenNews) {
+        resultBox.innerHTML = "<span style='color:red;'>Please rewrite the news first.</span>";
         return;
       }
 
       resultBox.innerHTML = "Please wait... Publishing your news...";
+
+      // Clean the news content by removing unwanted patterns
+      let cleanedNews = rewrittenNews;
+      
+      // Remove common prefixes and markers
+      const prefixesToRemove = [
+        '### हेडलाइन:', 
+        '### समाचार:', 
+        '### Rewritten News:', 
+        '### शीर्षक:', 
+        '### News:', 
+        '### Result:', 
+        'Result:', 
+        '### सुर्खेत:', 
+        'सुर्खेत:',
+        '**Rewritten News:**', 
+        '**Headline:** ', 
+        '**शीर्षक:**', 
+        '### Headline:',
+        '**शीर्षक:',
+        '###',
+        '##**मुख्य शीर्षक**:',
+        '##**पुनर्लेखित समाचार**:',
+        '**'
+      ];
+      
+      // Simple string replacement to avoid regex issues
+      prefixesToRemove.forEach(prefix => {
+        while (cleanedNews.includes(prefix)) {
+          cleanedNews = cleanedNews.replace(prefix, '');
+        }
+      });
+      
+      cleanedNews = cleanedNews.trim();
+
+      // Split the cleaned news into lines
+      const lines = cleanedNews.split('\n');
+
+      // Extract the title and body based on the selected title line number
+      const title = lines[0].trim();
+      const body = lines.slice(1).join('\n').trim();
 
       try {
         const response = await fetch("/publish", {
@@ -315,7 +356,7 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ news })
+          body: JSON.stringify({ news: cleanedNews })
         });
 
         if (response.ok) {
