@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
-from models import NewsRequest
+from models import NewsRequest, PublishRequest
 from api_clients import process_article
 import aiohttp
 import logging
 import traceback
+import subprocess
 
 router = APIRouter()
 
@@ -68,3 +69,27 @@ async def rewrite(request: NewsRequest):
         logging.error(f"Unexpected error in rewrite endpoint: {str(e)}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+@router.post("/publish")
+async def publish(request: PublishRequest):
+    try:
+        news_content = request.news
+
+        if not news_content.strip():
+            raise HTTPException(status_code=400, detail="News content cannot be empty")
+
+        # Execute the publish.py script
+        result = subprocess.run(['python', 'publish.py', news_content], capture_output=True, text=True)
+
+        if result.returncode == 0:
+            return {"message": "News published successfully"}
+        else:
+            logging.error(f"Publish script error: {result.stderr}")
+            raise HTTPException(status_code=500, detail=f"Publishing failed: {result.stderr}")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Unexpected error in publish endpoint: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while publishing")
