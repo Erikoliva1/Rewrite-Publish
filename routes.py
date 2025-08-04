@@ -78,18 +78,29 @@ async def publish(request: PublishRequest):
         if not news_content.strip():
             raise HTTPException(status_code=400, detail="News content cannot be empty")
 
-        # Execute the publish.py script
-        result = subprocess.run(['python', 'publish.py', news_content], capture_output=True, text=True)
+        # Split news content into title and body
+        lines = news_content.strip().split('\n')
+        if len(lines) < 2:
+            raise HTTPException(status_code=400, detail="News content must have at least a title and body")
+        
+        title = lines[0].strip()
+        body = '\n'.join(lines[1:]).strip()
+
+        if not title or not body:
+            raise HTTPException(status_code=400, detail="Both title and body are required")
+
+        # Execute the publish.py script with title and body as separate arguments
+        result = subprocess.run(['python', 'publish.py', title, body], capture_output=True, text=True)
 
         if result.returncode == 0:
             return {"message": "News published successfully"}
         else:
-            logging.error(f"Publish script error: {result.stderr}")
-            raise HTTPException(status_code=500, detail=f"Publishing failed: {result.stderr}")
-    
+            error_msg = result.stderr or result.stdout or "Unknown error occurred"
+            raise HTTPException(status_code=500, detail=f"Publishing failed: {error_msg}")
+
     except HTTPException:
         raise
     except Exception as e:
         logging.error(f"Unexpected error in publish endpoint: {str(e)}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="An unexpected error occurred while publishing")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
