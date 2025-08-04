@@ -16,10 +16,13 @@ def publish_news_to_wordpress(news_content):
     # Replace with your actual WordPress site URL where the plugin is installed
     WORDPRESS_SITE_URL = os.environ.get("WORDPRESS_SITE_URL", "https://therimonline.com")
 
-    # IMPORTANT: Replace with your actual API Token from your WordPress news-rewrite.onrender plugin settings.
-    # You can find this token in your WordPress admin panel under the 'news-rewrite.onrender' menu.
-    # It's highly recommended to store this in an environment variable for security.
-    API_TOKEN = os.environ.get("WORDPRESS_API_TOKEN", "7e523bdfa04efa076fb8e94d137c1a7657fbfb1f4ca7b2afe66c45b579761870")
+    # API Token should be stored in Replit Secrets for security
+    API_TOKEN = os.environ.get("WORDPRESS_API_TOKEN")
+    
+    if not API_TOKEN:
+        print("Error: WORDPRESS_API_TOKEN environment variable is not set.")
+        print("Please add your WordPress API token to Replit Secrets.")
+        sys.exit(1)
 
     # API Endpoint for creating posts
     API_ENDPOINT = f"{WORDPRESS_SITE_URL}/wp-json/news-rewrite-onrender/v1/createpost"
