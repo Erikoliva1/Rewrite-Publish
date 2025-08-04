@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>The Rim Online</title>
+  <link rel="icon" href="https://i.ibb.co/BKqH689b/logo.png" type="image/png" />
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 850px;
+      margin: auto;
+      padding: 20px;
+      background-color: #f2f2f2;
+      color: #222;
+    }
+
+    .logo-container {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .logo-container img {
+      max-width: 100px;
+      height: auto;
+    }
+
+    .rim-online-text {
+      text-align: center;
+      color: #ED2024;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-top: -5px;
+      margin-bottom: 20px;
+      letter-spacing: 1px;
+    }
+
+    .header-datetime {
+      text-align: center;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: #444;
+    }
+
+    textarea {
+      width: 100%;
+      font-size: 16px;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      resize: vertical;
+      min-height: 200px;
+      box-sizing: border-box;
+      margin-top: 10px;
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .button-group button {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+    }
+
+    .submit-btn {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .submit-btn:hover {
+      background-color: #0056b3;
+    }
+
+    .publish-btn {
+      background-color: #ED2024;
+      color: white;
+    }
+
+    .publish-btn:hover {
+      background-color: #C7181B; /* Darker shade of red for hover effect */
+    }
+
+    .clear-btn {
+      background-color: #6c757d;
+      color: white;
+    }
+
+    .clear-btn:hover {
+      background-color: #5a6268;
+    }
+
+    .copy-btn {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .copy-btn:hover {
+      background-color: #218838;
+    }
+
+    .output {
+      margin-top: 20px;
+      background: white;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .creator-info {
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+
+    footer a {
+      color: #007bff;
+      text-decoration: underline;
+    }
+
+    /* Mobile responsive styles */
+    @media screen and (max-width: 600px) {
+      body {
+        padding: 10px;
+        font-size: 15px;
+      }
+
+      .rim-online-text {
+        font-size: 1rem;
+        margin-bottom: 20px;
+      }
+
+      .header-datetime {
+        font-size: 13px;
+        margin-bottom: 15px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .button-group button {
+        width: 100%;
+        font-size: 15px;
+      }
+
+      .output {
+        font-size: 14px;
+        padding: 15px;
+      }
+
+      footer {
+        font-size: 12px;
+      }
+
+      .creator-info {
+        font-size: 11px;
+      }
+
+      textarea {
+        font-size: 15px;
+        padding: 10px;
+        min-height: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo-container">
+    <a href="https://therimonline.com/" target="_blank">
+      <img src="https://i.ibb.co/BKqH689b/logo.png" alt="The Rim Online Logo" />
+    </a>
+    <div class="rim-online-text">THE RIM ONLINE</div>
+
+    <!-- Buy Me a Coffee Button -->
+    <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js"
+            data-name="bmc-button"
+            data-slug="prabhatyadav"
+            data-color="#FFDD00"
+            data-emoji=""
+            data-font="Cookie"
+            data-text="Buy me a coffee"
+            data-outline-color="#000000"
+            data-font-color="#000000"
+            data-coffee-color="#ffffff"></script>
+
+    <div class="header-datetime" id="nepaliDateTime">लोड हुँदैछ...</div>
+  </div>
+
+  <textarea id="news" placeholder="Paste your news here..."></textarea>
+
+  <div>
+    <label for="api-select">Select API:</label>
+    <select id="api-select">
+      <option value="azure_gpt41">Azure GPT-4.1</option>
+      <option value="azure_gpt41_nano">Azure GPT-4.1 Nano</option>
+      <option value="openrouter_gpt41_nano">OpenRouter GPT-4.1 Nano</option>
+      <option value="openrouter_deepseek">OpenRouter DeepSeek</option>
+      <option value="azure_gpt41_mini">Azure GPT-4.1 Mini</option>
+      <option value="azure_grok">Azure Grok</option>
+      <option value="openrouter_gpt35">OpenRouter GPT-3.5</option>
+      <option value="openrouter_gemma">OpenRouter Gemma</option>
+      <option value="openrouter_claude3">OpenRouter Claude-3</option>
+    </select>
+  </div>
+
+  <div class="button-group">
+    <button class="submit-btn" onclick="rewriteNews()">Submit</button>
+    <button class="clear-btn" onclick="clearFields()">Clear</button>
+    <button class="copy-btn" onclick="copyResult()">Copy Result</button>
+    <button class="publish-btn" onclick="publishNews()">Publish</button>
+  </div>
+
+  <div class="output" id="resultBox"></div>
+
+  <footer>
+    <div class="creator-info">
+      Created by <a href="https://www.facebook.com/prabhatyadav99" target="_blank">Prabhat Yadav</a> <br />
+      <a href="mailto:prabhatyadav2003@gmail.com">prabhatyadav2003@gmail.com</a> |
+      <a href="tel:+977 9705858058">+977 9705858058</a>
+    </div>
+    &copy; The Rim Online — All Rights Reserved
+  </footer>
+
+  <script>
+    async function rewriteNews() {
+      const news = document.getElementById("news").value.trim();
+      const api = document.getElementById("api-select").value;
+      const resultBox = document.getElementById("resultBox");
+
+      if (!news) {
+        resultBox.innerHTML = "<span style='color:red;'>Please paste a news.</span>";
+        return;
+      }
+
+      resultBox.innerHTML = "Please wait... Processing your news...";
+
+      try {
+        const response = await fetch("/rewrite", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ news, api })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rewritten_news) {
+            const formattedNews = data.rewritten_news.replace(/\[PARAGRAPH_BREAK\]/g, "\n");
+            resultBox.innerHTML = `<strong>Result:</strong>\n\n${formattedNews}`;
+          } else {
+            resultBox.innerHTML = `<span style='color:red;'>Error: ${data.error || 'Unknown error occurred'}</span>`;
+          }
+        } else {
+          const errorData = await response.json();
+          if (response.status === 429) {
+            resultBox.innerHTML = `<span style='color:orange;'><strong>Rate Limit:</strong> ${errorData.detail}</span>`;
+          } else {
+            resultBox.innerHTML = `<span style='color:red;'><strong>Error:</strong> ${errorData.detail || 'Unknown error occurred'}</span>`;
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        resultBox.innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
+      }
+    }
+
+    function clearFields() {
+      document.getElementById("news").value = "";
+      document.getElementById("resultBox").innerHTML = "";
+    }
+
+    function copyResult() {
+      const resultText = document.getElementById("resultBox").innerText;
+      if (!resultText) return alert("No result to copy.");
+      navigator.clipboard.writeText(resultText)
+        .then(() => alert("Result copied to clipboard!"))
+        .catch(err => alert("Copy failed."));
+    }
+
+    async function publishNews() {
+      const news = document.getElementById("news").value.trim();
+      const resultBox = document.getElementById("resultBox");
+
+      if (!news) {
+        resultBox.innerHTML = "<span style='color:red;'>Please paste a news.</span>";
+        return;
+      }
+
+      resultBox.innerHTML = "Please wait... Publishing your news...";
+
+      try {
+        const response = await fetch("/publish", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ news })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.message) {
+            resultBox.innerHTML = `<strong>Result:</strong>\n\n${data.message}`;
+          } else {
+            resultBox.innerHTML = `<span style='color:red;'>Error: ${data.error || 'Unknown error occurred'}</span>`;
+          }
+        } else {
+          const errorData = await response.json();
+          resultBox.innerHTML = `<span style='color:red;'><strong>Error:</strong> ${errorData.detail || 'Unknown error occurred'}</span>`;
+        }
+      } catch (err) {
+        console.error(err);
+        resultBox.innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
+      }
+    }
+
+    function toNepaliDigits(str) {
+      const nd = ['०','१','२','३','४','५','६','७','८','९'];
+      return str.replace(/\d/g, d => nd[d]);
+    }
+
+    // Nepali month and day names
+    const bsMonthNames = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुष','माघ','फाल्गुन','चैत्र'];
+    const bsDayNames = ['आइतबार','सोमबार','मंगलबार','बुधबार','बिहिबार','शुक्रबार','शनिबार'];
+
+    // Nepali calendar data for month lengths (sample years)
+    const bsData = [
+      [2000, 30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+      [2082, 31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],  // Year 2082 BS
+      [2090, 31, 31, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31]
+    ];
+
+    // Convert AD date to BS date
+    function adToBs(adDate) {
+      // Adjusted known AD date and corresponding BS date for correct mapping
+      const known = new Date('2025-07-30'); // AD date corresponding to 2082/04/14 BS
+      const baseBS = { year: 2082, month: 4, day: 14 }; // १४ साउन २०८२
+
+      const diffDays = Math.floor((adDate - known) / (1000 * 60 * 60 * 24));
+      let bsY = baseBS.year, bsM = baseBS.month, bsD = baseBS.day + diffDays;
+
+      const getMonthLength = (y, m) => {
+        const row = bsData.find(d => d[0] === y);
+        return row ? row[m] : 30;
+      };
+
+      while (bsD > getMonthLength(bsY, bsM)) {
+        bsD -= getMonthLength(bsY, bsM);
+        bsM++;
+        if (bsM > 12) {
+          bsM = 1;
+          bsY++;
+        }
+      }
+
+      while (bsD <= 0) {
+        bsM--;
+        if (bsM < 1) {
+          bsM = 12;
+          bsY--;
+        }
+        bsD += getMonthLength(bsY, bsM);
+      }
+
+      return { year: bsY, month: bsM, day: bsD };
+    }
+
+    // Get formatted Nepali date and time string
+    function getNepaliDateTime() {
+      const now = new Date();
+      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+      const nepalTime = new Date(utc + 5.75 * 3600000);
+      const bs = adToBs(nepalTime);
+
+      const bsDay = bsDayNames[nepalTime.getDay()];
+      const bsYear = bs.year;
+      const bsMonth = bsMonthNames[bs.month - 1];
+      const bsDate = bs.day;
+
+      let hours = nepalTime.getHours();
+      let minutes = nepalTime.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const formattedTime = `${toNepaliDigits(hours.toString())}:${toNepaliDigits(minutes.toString().padStart(2, '0'))} ${ampm}`;
+
+      return `${toNepaliDigits(bsYear.toString())} ${bsMonth} ${toNepaliDigits(bsDate.toString())}, ${bsDay}, समय: ${formattedTime}`;
+    }
+
+    function loadNepaliDateTime() {
+      const el = document.getElementById('nepaliDateTime');
+      try {
+        el.textContent = getNepaliDateTime();
+      } catch (e) {
+        console.error("Error loading Nepali date:", e);
+        el.textContent = "तिथि प्रदर्शन गर्न असमर्थ";
+      }
+    }
+
+    loadNepaliDateTime();
+    setInterval(loadNepaliDateTime, 60000);
+  </script>
+
+</body>
+</html>
