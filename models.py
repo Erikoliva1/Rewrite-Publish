@@ -1,4 +1,6 @@
+
 from pydantic import BaseModel
+from typing import Optional, List
 
 class NewsRequest(BaseModel):
     news: str
@@ -6,3 +8,6 @@ class NewsRequest(BaseModel):
 
 class PublishRequest(BaseModel):
     news: str
+    featured_image_id: Optional[int] = None
+    categories: List[str] = []
+    tags: List[str] = []
