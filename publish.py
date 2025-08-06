@@ -1,66 +1,114 @@
+
 import requests
 import sys
-import json
 import os
+import json
+import logging
 import time
+import traceback
+from dotenv import load_dotenv
 
-def publish_news_to_wordpress(news_content):
-    """
-    Publishes news content to a WordPress site using the news-rewrite.onrender API.
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-    Args:
-        news_content (str): The content of the news article to be published.
-    """
+WORDPRESS_CATEGORY_MAP = {
+    "मुख्य समाचार": 12,
+    "समाचार": 9,
+    "देश": 11,
+    "राजनिति": 10,
+    "अर्थ": 5,
+    "खेलकुद": 1,
+    "फिचर": 2,
+    "मनोरञ्जन": 7,
+    "विचार": 16,
+    "विदेश": 20,
+    "स्वास्थ्य/जीवनशैली": 15,
+    "Banner": 59,
+}
 
-    # --- Configuration ---
-    # Replace with your actual WordPress site URL where the plugin is installed
-    WORDPRESS_SITE_URL = os.environ.get("WORDPRESS_SITE_URL", "https://therimonline.com")
-
-    # API Token should be stored in Replit Secrets for security
+def publish_news_to_wordpress(news_data):
+    WORDPRESS_SITE_URL = os.environ.get("WORDPRESS_SITE_URL")
     API_TOKEN = os.environ.get("WORDPRESS_API_TOKEN")
-    
+
+    if not WORDPRESS_SITE_URL:
+        logger.error("Error: WORDPRESS_SITE_URL environment variable is not set.")
+        sys.exit(1)
     if not API_TOKEN:
-        print("Error: WORDPRESS_API_TOKEN environment variable is not set.")
-        print("Please add your WordPress API token to Replit Secrets.")
+        logger.error("Error: WORDPRESS_API_TOKEN environment variable is not set.")
         sys.exit(1)
 
-    # API Endpoint for creating posts
-    API_ENDPOINT = f"{WORDPRESS_SITE_URL}/wp-json/news-rewrite-onrender/v1/createpost"
+    POST_API_ENDPOINT = f"{WORDPRESS_SITE_URL}/wp-json/news-rewrite-onrender/v1/createpost"
 
-    # --- Prepare the data for the API request ---
-    # Split the news content into title and body
+    news_content = news_data.get("news", "")
+    featured_image_id = news_data.get("featured_image_id")
+    selected_categories = news_data.get("categories", [])
+    selected_tags = news_data.get("tags", [])
+
     lines = news_content.split('\n', 1)
     title = lines[0].strip() if lines else "Untitled News Article"
     body = lines[1].strip() if len(lines) > 1 else ""
 
-    # You can customize these parameters based on your needs
+    if not title or not body:
+        logger.error("News content must contain both a title and a body.")
+        sys.exit(1)
+
+    category_ids = []
+    for cat_name in selected_categories:
+        cat_id = WORDPRESS_CATEGORY_MAP.get(cat_name)
+        if cat_id:
+            category_ids.append(cat_id)
+            logger.info(f"Mapped category '{cat_name}' to ID: {cat_id}")
+        else:
+            logger.warning(f"Category '{cat_name}' not found in WORDPRESS_CATEGORY_MAP. Skipping.")
+
+    content_lower = (title + " " + body).lower()
+    auto_tags = []
+
+    keyword_tags = {
+        "सुन": "सुनको भाउ",
+        "चाँदी": "चाँदीको भाउ",
+        "डलर": "विदेशी मुद्रा",
+        "शेयर": "शेयर बजार",
+        "बैंक": "बैंकिङ",
+        "निर्वाचन": "निर्वाचन",
+        "राजनीति": "राजनीति",
+        "अर्थ": "अर्थतन्त्र",
+        "खेल": "खेलकुद",
+        "फुटबल": "खेलकुद",
+        "क्रिकेट": "खेलकुद",
+        "मौसम": "मौसम",
+        "कोभिड": "स्वास्थ्य",
+        "स्वास्थ्य": "स्वास्थ्य",
+        "शिक्षा": "शिक्षा",
+        "प्रविधि": "प्रविधि",
+        "Banner": "Banner"
+    }
+
+    for keyword, tag in keyword_tags.items():
+        if keyword in content_lower and tag not in selected_tags:
+            auto_tags.append(tag)
+
+    all_tags = list(set(selected_tags + auto_tags))
+    logger.info(f"Final tags to be used: {all_tags}")
+
     payload = {
         "title": title,
         "content": body,
         "wpToken": API_TOKEN,
-        "post_status": "publish",  # 'publish', 'draft', 'pending'
-        "catId": "1",  # Default category ID (e.g., 'Uncategorized'). Change as needed.
-        # You can get category IDs from your WordPress admin or via the /getCategories API.
-        "tags": "news, rewrite, AI",  # Comma-separated tags
-        # "featuredImage": "https://example.com/path/to/your/image.jpg",  # Optional: URL or base64 of a featured image
-        # "image_url": "https://example.com/path/to/another/image.jpg",  # Optional: If you have a primary image URL
-        # "postTime": "2023-10-27 10:00:00",  # Optional: Specific post date/time
-        # "serp_title": "SEO Title for " + title,  # Optional: For RankMath/Yoast SEO title
-        # "serp_des": "This is a meta description for the news article.",  # Optional: For RankMath/Yoast meta description
-        # "serp_score": "80"  # Optional: For RankMath/Yoast SEO score
+        "post_status": "publish",
+        "catIds": category_ids,
+        "tagNames": all_tags,
+        "featured_image_id": featured_image_id
     }
 
-    # --- Send the POST request ---
-    print(f"Attempting to publish news to: {API_ENDPOINT}")
-    print(f"Title: {title}")
-    print(f"Body length: {len(body)} characters")
-    print(f"Payload keys: {list(payload.keys())}")
-    # print(f"Content (first 200 chars): {body[:200]}...")  # For debugging, don't print full content in production logs
+    logger.info(f"Attempting to publish news to: {POST_API_ENDPOINT}")
+    logger.info(f"Title: {title}")
+    logger.info(f"Body length: {len(body)} characters")
+    logger.info(f"Categories (IDs): {category_ids}")
+    logger.info(f"Tags (Names): {all_tags}")
+    logger.info(f"Featured Image ID: {featured_image_id if featured_image_id else 'None'}")
 
     try:
-        # Create a session to maintain cookies and appear more like a browser
-        session = requests.Session()
-        
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -75,102 +123,92 @@ def publish_news_to_wordpress(news_content):
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Dest': 'empty'
         }
-        
-        # First, make a GET request to the main site to establish a session
+
         try:
-            session.get(WORDPRESS_SITE_URL, headers={
+            logger.info(f"Making initial GET request to {WORDPRESS_SITE_URL} to establish session.")
+            requests.get(WORDPRESS_SITE_URL, headers={
                 'User-Agent': headers['User-Agent'],
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
             }, timeout=10)
-            time.sleep(2)  # Wait a bit between requests
-        except:
-            pass  # Continue even if this fails
-        
-        print(f"Sending JSON payload with headers: {headers}")
-        
-        # Add a longer delay to avoid being flagged as bot
-        time.sleep(3)
-        
-        response = session.post(API_ENDPOINT, json=payload, headers=headers, timeout=30)
+            time.sleep(2)
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Initial GET request failed: {e}")
+            pass
 
-        # --- Handle the response ---
-        print(f"Response status code: {response.status_code}")
-        print(f"Response headers: {dict(response.headers)}")
-        
+        logger.info(f"Sending POST request to {POST_API_ENDPOINT} with JSON payload.")
+        time.sleep(3)
+
+        response = requests.post(POST_API_ENDPOINT, json=payload, headers=headers, timeout=30)
+
+        logger.info(f"Response status code: {response.status_code}")
+
+        raw_response_text = response.text
+        logger.info(f"Raw response content (first 500 chars): {raw_response_text[:500]}...")
+
         if response.status_code == 200:
             try:
                 json_response = response.json()
                 if json_response.get("status") == "success":
-                    print("News published successfully!")
-                    print(f"Permalink: {json_response.get('permalink')}")
-                    print(f"Post ID: {json_response.get('postId')}")
+                    logger.info("News published successfully!")
+                    logger.info(f"Permalink: {json_response.get('permalink')}")
+                    logger.info(f"Post ID: {json_response.get('postId')}")
                     if json_response.get('thumbnail'):
-                        print(f"Thumbnail: {json_response.get('thumbnail')}")
-                    sys.exit(0)  # Indicate success
+                        logger.info(f"Thumbnail: {json_response.get('thumbnail')}")
+                    sys.exit(0)
                 else:
-                    print(f"Error publishing news: {json_response.get('msg', 'Unknown error')}")
-                    print(f"Full response: {json.dumps(json_response, indent=2)}")
-                    sys.exit(1)  # Indicate failure
-            except json.JSONDecodeError:
-                print(f"Error: Could not decode JSON response. Raw response: {response.text[:1000]}")
+                    logger.error(f"Error publishing news: {json_response.get('msg', 'Unknown error')}")
+                    sys.exit(1)
+            except json.JSONDecodeError as e:
+                logger.error(f"Error: Could not decode JSON response. Exception: {e}")
                 sys.exit(1)
         else:
-            print(f"Error: HTTP Status Code {response.status_code}")
+            logger.error(f"Error: HTTP Status Code {response.status_code}")
             try:
                 error_json = response.json()
-                print(f"Error response JSON: {json.dumps(error_json, indent=2)}")
-                
-                # Check for specific bot protection error
-                if "Imunify360" in response.text or "bot-protection" in response.text:
-                    print("Bot protection detected. This may be due to server security settings.")
-                    print("Consider contacting the website administrator to whitelist your IP or adjust security settings.")
-                
+                logger.error(f"Error response JSON: {json.dumps(error_json, indent=2)}")
             except json.JSONDecodeError:
-                print(f"Error response text: {response.text[:1000]}")
-            sys.exit(1)  # Indicate failure
+                logger.error(f"Error response text (not JSON): {response.text[:1000]}")
+            sys.exit(1)
 
     except requests.exceptions.ConnectionError as e:
-        print(f"Connection Error: Could not connect to WordPress site. Please check the URL and your internet connection. Error: {e}")
+        logger.error(f"Connection Error: Could not connect to WordPress site. Error: {e}")
         sys.exit(1)
     except requests.exceptions.Timeout as e:
-        print(f"Timeout Error: Request to WordPress site timed out. Error: {e}")
+        logger.error(f"Timeout Error: Request to WordPress site timed out. Error: {e}")
         sys.exit(1)
     except requests.exceptions.RequestException as e:
-        print(f"An unexpected error occurred during the request: {e}")
+        logger.error(f"An unexpected error occurred during the request: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.critical(f"A critical unexpected error occurred: {e}")
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python publish.py \"title\" \"body content\"")
-        print("Or:    python publish.py \"Your news content here\" (single argument)")
+    load_dotenv()
+
+    if len(sys.argv) < 2:
+        logger.error("Usage: python publish.py \"{'news': '...', 'featured_image_id': ..., 'categories': [...], 'tags': []}\"")
         sys.exit(1)
 
-    if len(sys.argv) == 3:
-        # Two arguments: title and body
-        title = sys.argv[1]
-        body = sys.argv[2]
-        news_content_to_publish = f"{title}\n{body}"
-        print("Using title and body from command line arguments.")
-    else:
-        # Single argument: treat as full content
-        input_arg = sys.argv[1]
-        
-        if os.path.exists(input_arg):
-            # If the argument is a file path, read content from the file
-            try:
-                with open(input_arg, 'r', encoding='utf-8') as f:
-                    news_content_to_publish = f.read()
-                print(f"Reading news content from file: {input_arg}")
-            except Exception as e:
-                print(f"Error reading file {input_arg}: {e}")
-                sys.exit(1)
-        else:
-            # Otherwise, treat the argument as direct news content
-            news_content_to_publish = input_arg
-            print("Using direct news content from command line.")
-
-    if not news_content_to_publish.strip():
-        print("Error: News content is empty.")
+    json_data_arg = sys.argv[1]
+    try:
+        news_data = json.loads(json_data_arg)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to decode JSON argument: {e}")
         sys.exit(1)
 
-    publish_news_to_wordpress(news_content_to_publish)
+    required_keys = ["news"]
+    for key in required_keys:
+        if key not in news_data:
+            logger.error(f"Missing required key in JSON argument: '{key}'")
+            sys.exit(1)
+
+    if "categories" not in news_data or not isinstance(news_data["categories"], list):
+        news_data["categories"] = []
+        logger.warning("Categories not provided or invalid, defaulting to empty list.")
+    if "tags" not in news_data or not isinstance(news_data["tags"], list):
+        news_data["tags"] = []
+        logger.warning("Tags not provided or invalid, defaulting to empty list.")
+
+    publish_news_to_wordpress(news_data)
