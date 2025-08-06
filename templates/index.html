@@ -43,16 +43,57 @@
       color: #444;
     }
 
-    textarea {
+    /* Original news input textarea */
+    textarea#news { /* Specific selector for the input textarea */
       width: 100%;
       font-size: 16px;
       padding: 15px;
       border-radius: 8px;
       border: 1px solid #ccc;
-      resize: vertical;
-      min-height: 200px;
+      resize: vertical; /* Keep resize for the input textarea */
+      min-height: 200px; /* Keep min-height for the input textarea */
       box-sizing: border-box;
       margin-top: 10px;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .input-group input[type="text"],
+    .input-group select,
+    .input-group input[type="file"] { /* Added file input */
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 10px;
+      margin-bottom: 15px;
+    }
+
+    .checkbox-group div {
+      display: flex;
+      align-items: center;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 8px;
+      width: 18px;
+      height: 18px;
     }
 
     .button-group {
@@ -108,15 +149,48 @@
       background-color: #218838;
     }
 
-    .output {
+    .upload-btn {
+      background-color: #ffc107; /* Yellowish color */
+      color: #333;
+      margin-top: 5px;
+    }
+
+    .upload-btn:hover {
+      background-color: #e0a800; /* Darker yellow */
+    }
+
+    /* UPDATED: Styles for the editable output textarea */
+    textarea.output { /* Specific selector for the output textarea */
       margin-top: 20px;
       background: white;
       padding: 20px;
-      border: 1px solid #ddd;
       border-radius: 8px;
-      white-space: pre-wrap;
+      border: 1px solid #ddd;
+      white-space: pre-wrap; /* Preserve whitespace and line breaks */
       line-height: 1.6;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      width: 100%; /* Ensure it takes full width */
+      box-sizing: border-box; /* Include padding in width */
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* Match body font */
+      font-size: 16px; /* Match other textareas */
+      color: #222; /* Default text color */
+      overflow: hidden; /* Hide scrollbar initially */
+      min-height: 100px; /* A smaller initial height for auto-grow */
+      resize: none; /* REMOVED: Disable manual resizing */
+    }
+
+    .output.error-text {
+      color: red;
+    }
+
+    .output.warning-text {
+      color: orange;
+    }
+
+    /* Style for read-only state */
+    .output[readonly] {
+      background-color: #e9ecef; /* Lighter background to indicate non-editable */
+      cursor: not-allowed;
     }
 
     footer {
@@ -162,9 +236,10 @@
         font-size: 15px;
       }
 
-      .output {
+      textarea.output { /* Specific selector for the output textarea */
         font-size: 14px;
         padding: 15px;
+        min-height: 100px; /* Adjusted for smaller screens */
       }
 
       footer {
@@ -175,7 +250,7 @@
         font-size: 11px;
       }
 
-      textarea {
+      textarea#news { /* Specific selector for the input textarea */
         font-size: 15px;
         padding: 10px;
         min-height: 150px;
@@ -208,7 +283,7 @@
 
   <textarea id="news" placeholder="Paste your news here..."></textarea>
 
-  <div>
+  <div class="input-group">
     <label for="api-select">Select API:</label>
     <select id="api-select">
       <option value="azure_gpt41">Azure GPT-4.1</option>
@@ -223,6 +298,31 @@
     </select>
   </div>
 
+  <div class="input-group">
+    <label for="featuredImageFile">Featured Image (Local File - Optional):</label>
+    <input type="file" id="featuredImageFile" accept="image/*">
+    <button class="upload-btn" onclick="uploadFeaturedImage()">Upload Image</button>
+    <p id="imageUploadStatus" style="font-size: 0.9em; margin-top: 5px;"></p>
+  </div>
+
+  <div class="input-group">
+    <label>Categories:</label>
+    <div class="checkbox-group">
+      <div><input type="checkbox" id="cat_mukhya" value="मुख्य समाचार"><label for="cat_mukhya">मुख्य समाचार</label></div>
+      <div><input type="checkbox" id="cat_samachar" value="समाचार"><label for="cat_samachar">समाचार</label></div>
+      <div><input type="checkbox" id="cat_desh" value="देश"><label for="cat_desh">देश</label></div>
+      <div><input type="checkbox" id="cat_rajniti" value="राजनिति"><label for="cat_rajniti">राजनिति</label></div>
+      <div><input type="checkbox" id="cat_artha" value="अर्थ"><label for="cat_artha">अर्थ</label></div>
+      <div><input type="checkbox" id="cat_khelkud" value="खेलकुद"><label for="cat_khelkud">खेलकुद</label></div>
+      <div><input type="checkbox" id="cat_feature" value="फिचर"><label for="cat_feature">फिचर</label></div>
+      <div><input type="checkbox" id="cat_manoranjan" value="मनोरञ्जन"><label for="cat_manoranjan">मनोरञ्जन</label></div>
+      <div><input type="checkbox" id="cat_vichar" value="विचार"><label for="cat_vichar">विचार</label></div>
+      <div><input type="checkbox" id="cat_videsh" value="विदेश"><label for="cat_videsh">विदेश</label></div>
+      <div><input type="checkbox" id="cat_swasthya" value="स्वास्थ्य/जीवनशैली"><label for="cat_swasthya">स्वास्थ्य/जीवनशैली</label></div>
+      <div><input type="checkbox" id="cat_Banner" value="Banner"><label for="cat_Banner">Banner</label></div>
+    </div>
+  </div>
+
   <div class="button-group">
     <button class="submit-btn" onclick="rewriteNews()">Submit</button>
     <button class="clear-btn" onclick="clearFields()">Clear</button>
@@ -230,7 +330,8 @@
     <button class="publish-btn" onclick="publishNews()">Publish</button>
   </div>
 
-  <div class="output" id="resultBox"></div>
+  <!-- UPDATED: Changed from div to textarea for editing -->
+  <textarea class="output" id="resultBox" placeholder="Rewritten news will appear here..." readonly></textarea>
 
   <footer>
     <div class="creator-info">
@@ -242,17 +343,77 @@
   </footer>
 
   <script>
+    let featuredImageId = null; // This will store the ID from WordPress
+
+    // Function to auto-resize textarea
+    function autoResizeTextarea(textarea) {
+      textarea.style.height = 'auto'; // Reset height to recalculate
+      textarea.style.height = (textarea.scrollHeight) + 'px'; // Set height to scroll height
+    }
+
+    async function uploadFeaturedImage() {
+      const fileInput = document.getElementById('featuredImageFile');
+      const file = fileInput.files[0];
+      const statusDiv = document.getElementById('imageUploadStatus');
+
+      if (!file) {
+        statusDiv.style.color = 'red';
+        statusDiv.textContent = "Please select an image file to upload.";
+        return;
+      }
+
+      statusDiv.style.color = 'orange';
+      statusDiv.textContent = "Uploading image... Please wait.";
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        // Send the file to your Python backend's proxy endpoint
+        const response = await fetch('/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          featuredImageId = data.id; // Store the WordPress media ID
+          statusDiv.style.color = 'green';
+          statusDiv.textContent = `Image uploaded successfully! Media ID: ${featuredImageId}`;
+        } else {
+          const errorData = await response.json();
+          statusDiv.style.color = 'red';
+          statusDiv.textContent = `Error uploading image: ${errorData.detail || errorData.message || 'Unknown error'}`;
+          featuredImageId = null; // Reset ID on failure
+        }
+      } catch (err) {
+        console.error("Error during image upload:", err);
+        statusDiv.style.color = 'red';
+        statusDiv.textContent = `Error uploading image: ${err.message}`;
+        featuredImageId = null; // Reset ID on failure
+      }
+    }
+
     async function rewriteNews() {
       const news = document.getElementById("news").value.trim();
       const api = document.getElementById("api-select").value;
       const resultBox = document.getElementById("resultBox");
 
+      // Clear previous status/error classes and ensure it's read-only for messages
+      resultBox.classList.remove('error-text', 'warning-text');
+      resultBox.style.color = ''; // Reset inline color
+      resultBox.setAttribute('readonly', 'true'); // Make it read-only for messages
+
       if (!news) {
-        resultBox.innerHTML = "<span style='color:red;'>Please paste a news.</span>";
+        resultBox.value = "Please paste a news."; // Use .value for textarea
+        resultBox.classList.add('error-text'); // Add error class
+        autoResizeTextarea(resultBox); // Auto-resize for the message
         return;
       }
 
-      resultBox.innerHTML = "Please wait... Processing your news...";
+      resultBox.value = "Please wait... Processing your news..."; // Use .value for textarea
+      resultBox.style.color = 'initial'; // Ensure default color for processing message
+      autoResizeTextarea(resultBox); // Auto-resize for the message
 
       try {
         const response = await fetch("/rewrite", {
@@ -267,31 +428,52 @@
           const data = await response.json();
           if (data.rewritten_news) {
             const formattedNews = data.rewritten_news.replace(/\[PARAGRAPH_BREAK\]/g, "\n");
-            resultBox.innerHTML = `${formattedNews}`;
+            resultBox.value = formattedNews; // Use .value for textarea
+            resultBox.removeAttribute('readonly'); // Make it editable after successful rewrite
+            autoResizeTextarea(resultBox); // Auto-resize for the rewritten content
           } else {
-            resultBox.innerHTML = `<span style='color:red;'>Error: ${data.error || 'Unknown error occurred'}</span>`;
+            resultBox.value = `Error: ${data.error || 'Unknown error occurred'}`; // Use .value for textarea
+            resultBox.classList.add('error-text'); // Add error class
+            autoResizeTextarea(resultBox); // Auto-resize for the error message
           }
         } else {
           const errorData = await response.json();
           if (response.status === 429) {
-            resultBox.innerHTML = `<span style='color:orange;'><strong>Rate Limit:</strong> ${errorData.detail}</span>`;
+            resultBox.value = `Rate Limit: ${errorData.detail}`; // Use .value for textarea
+            resultBox.classList.add('warning-text'); // Add warning class
           } else {
-            resultBox.innerHTML = `<span style='color:red;'><strong>Error:</strong> ${errorData.detail || 'Unknown error occurred'}</span>`;
+            resultBox.value = `Error: ${errorData.detail || 'Unknown error occurred'}`; // Use .value for textarea
+            resultBox.classList.add('error-text'); // Add error class
           }
+          autoResizeTextarea(resultBox); // Auto-resize for the error/warning message
         }
       } catch (err) {
         console.error(err);
-        resultBox.innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
+        resultBox.value = `Error: ${err.message}`; // Use .value for textarea
+        resultBox.classList.add('error-text'); // Add error class
+        autoResizeTextarea(resultBox); // Auto-resize for the error message
       }
     }
 
     function clearFields() {
       document.getElementById("news").value = "";
-      document.getElementById("resultBox").innerHTML = "";
+      const resultBox = document.getElementById("resultBox");
+      resultBox.value = ""; // Use .value for textarea
+      resultBox.classList.remove('error-text', 'warning-text'); // Clear status classes
+      resultBox.style.color = ''; // Clear inline color
+      resultBox.setAttribute('readonly', 'true'); // Ensure it's read-only when cleared
+      autoResizeTextarea(resultBox); // Auto-resize to its minimum height
+      document.getElementById("featuredImageFile").value = "";
+      document.getElementById("imageUploadStatus").textContent = ""; // Clear status
+      featuredImageId = null; // Reset featuredImageId
+      document.getElementById("api-select").value = "azure_gpt41";
+      document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+      });
     }
 
     function copyResult() {
-      const resultText = document.getElementById("resultBox").innerText;
+      const resultText = document.getElementById("resultBox").value; // Use .value for textarea
       if (!resultText) return alert("No result to copy.");
       navigator.clipboard.writeText(resultText)
         .then(() => alert("Result copied to clipboard!"))
@@ -300,55 +482,31 @@
 
     async function publishNews() {
       const resultBox = document.getElementById("resultBox");
-      const rewrittenNews = resultBox.innerText.trim();
+      const rewrittenNews = resultBox.value.trim(); // Use .value for textarea
+
+      // Clear previous status/error classes and ensure it's read-only for messages
+      resultBox.classList.remove('error-text', 'warning-text');
+      resultBox.style.color = ''; // Reset inline color
+      resultBox.setAttribute('readonly', 'true'); // Make it read-only for messages
+
+      const selectedCategories = Array.from(document.querySelectorAll('input[id^="cat_"]:checked'))
+                                    .map(cb => cb.value);
+      const selectedTags = Array.from(document.querySelectorAll('input[id^="tag_"]:checked'))
+                                .map(cb => cb.value);
 
       if (!rewrittenNews) {
-        resultBox.innerHTML = "<span style='color:red;'>Please rewrite the news first.</span>";
+        resultBox.value = "Please rewrite the news first."; // Use .value for textarea
+        resultBox.classList.add('error-text'); // Add error class
+        autoResizeTextarea(resultBox); // Auto-resize for the message
         return;
       }
 
-      resultBox.innerHTML = "Please wait... Publishing your news...";
+      resultBox.value = "Please wait... Publishing your news..."; // Use .value for textarea
+      resultBox.style.color = 'initial'; // Ensure default color for publishing message
+      autoResizeTextarea(resultBox); // Auto-resize for the message
 
-      // Clean the news content by removing unwanted patterns
-      let cleanedNews = rewrittenNews;
-      
-      // Remove common prefixes and markers
-      const prefixesToRemove = [
-        '### हेडलाइन:', 
-        '### समाचार:', 
-        '### Rewritten News:', 
-        '### शीर्षक:', 
-        '### News:', 
-        '### Result:', 
-        'Result:', 
-        '### सुर्खेत:', 
-        'सुर्खेत:',
-        '**Rewritten News:**', 
-        '**Headline:** ', 
-        '**शीर्षक:**', 
-        '### Headline:',
-        '**शीर्षक:',
-        '###',
-        '##**मुख्य शीर्षक**:',
-        '##**पुनर्लेखित समाचार**:',
-        '**'
-      ];
-      
-      // Simple string replacement to avoid regex issues
-      prefixesToRemove.forEach(prefix => {
-        while (cleanedNews.includes(prefix)) {
-          cleanedNews = cleanedNews.replace(prefix, '');
-        }
-      });
-      
-      cleanedNews = cleanedNews.trim();
-
-      // Split the cleaned news into lines
-      const lines = cleanedNews.split('\n');
-
-      // Extract the title and body based on the selected title line number
-      const title = lines[0].trim();
-      const body = lines.slice(1).join('\n').trim();
+      // REMOVED: The prefixesToRemove logic is no longer needed here
+      let cleanedNews = rewrittenNews; // Use the user-edited content directly
 
       try {
         const response = await fetch("/publish", {
@@ -356,23 +514,34 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ news: cleanedNews })
+          body: JSON.stringify({
+            news: cleanedNews,
+            featured_image_id: featuredImageId, // Use the stored media ID
+            categories: selectedCategories,
+            tags: selectedTags
+          })
         });
 
         if (response.ok) {
           const data = await response.json();
           if (data.message) {
-            resultBox.innerHTML = `<strong>Result:</strong>\n\n${data.message}`;
+            resultBox.value = `Result:\n\n${data.message}`; // Use .value for textarea
           } else {
-            resultBox.innerHTML = `<span style='color:red;'>Error: ${data.error || 'Unknown error occurred'}</span>`;
+            resultBox.value = `Error: ${data.error || 'Unknown error occurred'}`; // Use .value for textarea
+            resultBox.classList.add('error-text'); // Add error class
           }
+          autoResizeTextarea(resultBox); // Auto-resize for the final message
         } else {
           const errorData = await response.json();
-          resultBox.innerHTML = `<span style='color:red;'><strong>Error:</strong> ${errorData.detail || 'Unknown error occurred'}</span>`;
+          resultBox.value = `Error: ${errorData.detail || 'Unknown error occurred'}`; // Use .value for textarea
+          resultBox.classList.add('error-text'); // Add error class
+          autoResizeTextarea(resultBox); // Auto-resize for the error message
         }
       } catch (err) {
         console.error(err);
-        resultBox.innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
+        resultBox.value = `Error: ${err.message}`; // Use .value for textarea
+        resultBox.classList.add('error-text'); // Add error class
+        autoResizeTextarea(resultBox); // Auto-resize for the error message
       }
     }
 
@@ -381,22 +550,18 @@
       return str.replace(/\d/g, d => nd[d]);
     }
 
-    // Nepali month and day names
     const bsMonthNames = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुष','माघ','फाल्गुन','चैत्र'];
     const bsDayNames = ['आइतबार','सोमबार','मंगलबार','बुधबार','बिहिबार','शुक्रबार','शनिबार'];
 
-    // Nepali calendar data for month lengths (sample years)
     const bsData = [
       [2000, 30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
-      [2082, 31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],  // Year 2082 BS
+      [2082, 31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
       [2090, 31, 31, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31]
     ];
 
-    // Convert AD date to BS date
     function adToBs(adDate) {
-      // Adjusted known AD date and corresponding BS date for correct mapping
-      const known = new Date('2025-07-30'); // AD date corresponding to 2082/04/14 BS
-      const baseBS = { year: 2082, month: 4, day: 14 }; // १४ साउन २०८२
+      const known = new Date('2025-07-30');
+      const baseBS = { year: 2082, month: 4, day: 14 };
 
       const diffDays = Math.floor((adDate - known) / (1000 * 60 * 60 * 24));
       let bsY = baseBS.year, bsM = baseBS.month, bsD = baseBS.day + diffDays;
@@ -427,7 +592,6 @@
       return { year: bsY, month: bsM, day: bsD };
     }
 
-    // Get formatted Nepali date and time string
     function getNepaliDateTime() {
       const now = new Date();
       const utc = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -459,8 +623,17 @@
       }
     }
 
+    // Initial calls on page load
     loadNepaliDateTime();
     setInterval(loadNepaliDateTime, 60000);
+
+    // Auto-resize the resultBox on input (user typing)
+    document.addEventListener('DOMContentLoaded', () => {
+      const resultBox = document.getElementById('resultBox');
+      resultBox.addEventListener('input', () => autoResizeTextarea(resultBox));
+      // Initial resize in case there's placeholder text or default content
+      autoResizeTextarea(resultBox);
+    });
   </script>
 
 </body>
