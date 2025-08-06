@@ -5,3 +5,6 @@ azure-ai-inference
 azure-core
 aiohttp
 pydantic
+requests
+brotli
+python-multipart
