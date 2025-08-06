@@ -1,5 +1,4 @@
-
-services:
+  services:
   - type: web
     name: news-rewriter-api
     env: python
@@ -12,6 +11,8 @@ services:
       - key: GITHUB_TOKEN
         sync: false
       - key: WORDPRESS_API_TOKEN
+        sync: false
+      - key: WORDPRESS_APP_PASSWORD
         sync: false
       - key: WORDPRESS_SITE_URL
         value: https://therimonline.com
