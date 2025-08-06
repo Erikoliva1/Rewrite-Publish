@@ -1,3 +1,4 @@
+
 import aiohttp
 import asyncio
 import json
@@ -9,63 +10,75 @@ from azure.ai.inference.models import SystemMessage, UserMessage
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 
-# Initialize Azure client
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 github_token = os.getenv("GITHUB_TOKEN")
 if not github_token:
+    logger.error("GITHUB_TOKEN environment variable must be set.")
     raise ValueError("GITHUB_TOKEN environment variable must be set.")
 
-azure_client = ChatCompletionsClient(
-    endpoint="https://models.github.ai/inference",
-    credential=AzureKeyCredential(github_token),
-)
+try:
+    azure_client = ChatCompletionsClient(
+        endpoint="https://models.github.ai/inference",
+        credential=AzureKeyCredential(github_token),
+    )
+    logger.info("Azure ChatCompletionsClient initialized successfully.")
+except Exception as e:
+    logger.critical(f"Failed to initialize Azure ChatCompletionsClient: {e}")
+    raise
 
-async def call_api(session, model, prompt, retries=5, backoff_factor=2):
+async def call_api(session, model, prompt):
     api_url = "https://openrouter.ai/api/v1/chat/completions"
     api_key = os.getenv("API_KEY")
 
-    for attempt in range(retries):
-        try:
-            async with session.post(
-                url=api_url,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                data=json.dumps({
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a professional Nepali news editor. Generate a short and relevant headline, then rewrite the article in totally new style and structure by not losing originality using standard journalistic Nepali. Result must be in the same paragraph count. No need to mention Explanation of changes & style notes just focus on best rewritting result."
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                })
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-                return data["choices"][0]["message"]["content"].strip()
-        except aiohttp.ClientResponseError as e:
-            if e.status == 429:
-                logging.warning(f"Rate limit hit for model {model}. Moving to next model...")
-                return "RATE_LIMIT_REACHED"
-            else:
-                logging.error(f"Error processing request with model {model}: {str(e)}")
-                traceback.print_exc()
-                return None
-        except Exception as e:
-            logging.error(f"Error processing request with model {model}: {str(e)}")
+    if not api_key:
+        logger.error("API_KEY environment variable is not set for OpenRouter API.")
+        return None
+
+    try:
+        logger.info(f"Calling OpenRouter API with model {model}")
+        async with session.post(
+            url=api_url,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps({
+                "model": model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a professional Nepali news editor. Generate a short and relevant headline, then rewrite the article in totally new style and structure by not losing originality using standard journalistic Nepali. Result must be in the same paragraph count. No need to mention Explanation of changes, Key Changes & style notes just focus on best rewritting result."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+            })
+        ) as response:
+            response.raise_for_status()
+            data = await response.json()
+            logger.info(f"Successfully received response from OpenRouter model {model}")
+            return data["choices"][0]["message"]["content"].strip()
+    except aiohttp.ClientResponseError as e:
+        logger.error(f"OpenRouter ClientResponseError for model {model} (Status: {e.status}): {str(e)}")
+        if e.status == 429:
+            logger.warning(f"Rate limit hit for OpenRouter model {model}")
+            return "RATE_LIMIT_REACHED"
+        else:
             traceback.print_exc()
             return None
-    return None
+    except Exception as e:
+        logger.error(f"Generic error calling OpenRouter API with model {model}: {str(e)}")
+        traceback.print_exc()
+        return None
 
-async def call_azure_api(model, prompt, retries=1, backoff_factor=2):
+async def call_azure_api(model, prompt):
     def sync_azure_call():
         try:
-            logging.info(f"🚀 Starting Azure API call to model: {model}")
+            logger.info(f"Starting Azure API call to model: {model}")
             response = azure_client.complete(
                 messages=[
                     SystemMessage("You are a professional Nepali news editor. Generate a short and relevant headline, then rewrite the article in totally new style and structure by not losing originality using standard journalistic Nepali. Result must be in the same paragraph count."),
@@ -75,49 +88,43 @@ async def call_azure_api(model, prompt, retries=1, backoff_factor=2):
                 top_p=1,
                 model=model
             )
-            logging.info(f"✅ Successfully got response from Azure model: {model}")
+            logger.info(f"Successfully got response from Azure model: {model}")
             return response.choices[0].message.content.strip()
         except HttpResponseError as e:
-            logging.error(f"🔥 HttpResponseError caught - Status: {e.status_code}")
+            logger.error(f"Azure HttpResponseError - Status: {e.status_code}")
             if e.status_code == 429:
-                logging.error(f"❌ Error processing request with model {model} on 'x-ms-error-code': 'RateLimitReached' - HTTP {e.status_code}")
-                logging.warning(f"⚠️ Azure Rate limit hit for model {model} (HTTP {e.status_code}). Returning RATE_LIMIT_REACHED...")
+                logger.warning(f"Azure Rate limit hit for model {model}")
                 return "RATE_LIMIT_REACHED"
             else:
-                logging.error(f"❌ Error processing request with model {model}: HTTP {e.status_code} - {str(e)}")
+                logger.error(f"Error processing request with model {model}: HTTP {e.status_code} - {str(e)}")
                 traceback.print_exc()
                 return None
         except Exception as e:
-            logging.error(f"🔥 Generic Exception caught: {type(e).__name__}: {str(e)}")
+            logger.error(f"Exception during sync Azure call: {type(e).__name__}: {str(e)}")
             error_str = str(e).lower()
             if ("ratelimitreached" in error_str or
                 "rate limit" in error_str or
                 "429" in error_str or
                 "quota exceeded" in error_str or
                 "too many requests" in error_str):
-                logging.error(f"❌ Error processing request with model {model} on exception with rate limit indicators")
-                logging.warning(f"⚠️ Azure Rate limit detected in exception for model {model}. Returning RATE_LIMIT_REACHED...")
+                logger.warning(f"Azure Rate limit detected in exception for model {model}")
                 return "RATE_LIMIT_REACHED"
             else:
-                logging.error(f"❌ Error processing request with model {model}: {str(e)}")
+                logger.error(f"Error processing request with model {model}: {str(e)}")
                 traceback.print_exc()
                 return None
 
     try:
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(None, sync_azure_call)
-        logging.info(f"🔄 Azure API call completed for model {model}")
-        if result == "RATE_LIMIT_REACHED":
-            logging.error(f"❌ Error processing request with model {model} - RATE_LIMIT_REACHED returned from sync call")
-        logging.info(f"📝 Result: {result[:50] if isinstance(result, str) and result != 'RATE_LIMIT_REACHED' else result}")
+        logger.info(f"Azure API call completed for model {model}")
         return result
     except Exception as e:
-        logging.error(f"💥 Error in async wrapper for Azure model {model}: {str(e)}")
+        logger.error(f"Error in async wrapper for Azure model {model}: {str(e)}")
         traceback.print_exc()
         return None
 
 def format_output(raw_output):
-    # Split the output into paragraphs based on double newlines
     paragraphs = raw_output.split('\n\n')
     formatted_news = '\n\n'.join(paragraphs)
     return formatted_news
@@ -143,30 +150,28 @@ Rewritten news:
     }
 
     if selected_api not in api_mapping:
+        logger.error(f"Invalid API selected: {selected_api}")
         raise ValueError("Invalid API selected")
 
     api_type, model = api_mapping[selected_api]
 
     try:
-        logging.info(f"🔄 Trying {api_type} model: {model}")
+        logger.info(f"Trying {api_type} model: {model}")
         if api_type == "azure":
             raw_output = await call_azure_api(model, prompt)
         else:
             raw_output = await call_api(session, model, prompt)
 
-        logging.info(f"📝 Response from {api_type} model {model}: {raw_output[:50] if isinstance(raw_output, str) and raw_output != 'RATE_LIMIT_REACHED' else raw_output}")
-
         if raw_output == "RATE_LIMIT_REACHED":
-            logging.error(f"❌ Error processing request with model {model} - Rate limit reached")
-            logging.warning(f"⚠️ Rate limit reached for {api_type} model {model}, please try another API.")
+            logger.warning(f"Rate limit reached for {api_type} model {model}")
             return "RATE_LIMIT_REACHED"
         elif raw_output:
-            logging.info(f"✅ Successfully got response from {api_type} model: {model}")
+            logger.info(f"Successfully got response from {api_type} model: {model}")
             return format_output(raw_output)
         else:
-            logging.warning(f"❌ No response from {api_type} model {model}, please try another API.")
+            logger.warning(f"No response from {api_type} model {model}")
             return None
     except Exception as e:
-        logging.error(f"💥 Error with {api_type} model {model}: {str(e)}")
+        logger.error(f"Error with {api_type} model {model}: {str(e)}")
         traceback.print_exc()
         return None
