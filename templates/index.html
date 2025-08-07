@@ -158,15 +158,22 @@
       background-color: #138496; /* Darker blue */
     }
 
-    .upload-btn {
-      background-color: #ffc107; /* Yellowish color */
-      color: #333;
-      margin-top: 5px;
+    /* NEW: Style for the image action buttons */
+    .action-btn {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+      min-width: 150px; /* Ensure buttons don't get too small */
     }
 
-    .upload-btn:hover {
-      background-color: #e0a800; /* Darker yellow */
+    .action-btn:hover {
+      opacity: 0.9; /* Simple hover effect */
     }
+
 
     /* UPDATED: Styles for the editable output textarea */
     textarea.output { /* Specific selector for the output textarea */
@@ -279,6 +286,12 @@
         width: 100%;
         font-size: 15px;
       }
+
+      /* NEW: Mobile adjustments for image action buttons */
+      .button-group .action-btn {
+        width: 100%;
+        min-width: unset; /* Remove min-width on mobile */
+      }
     }
   </style>
 </head>
@@ -333,8 +346,13 @@
   <div class="input-group">
     <label for="featuredImageFile">Featured Image (Local File - Optional):</label>
     <input type="file" id="featuredImageFile" accept="image/*">
-    <button class="upload-btn" onclick="uploadFeaturedImage()">Upload Image</button>
     <p id="imageUploadStatus" style="font-size: 0.9em; margin-top: 5px;"></p>
+  </div>
+
+  <div class="button-group">
+    <button class="action-btn" onclick="applyWatermarkAndPrepareDownload()" style="background-color: #007bff;">Apply Watermark</button>
+    <button class="action-btn" onclick="downloadWatermarkedImage()" style="background-color: #28a745;">Download Watermarked</button>
+    <button class="action-btn" onclick="uploadPreparedImage()" style="background-color: #ffc107; color: #333;">Upload to WordPress</button>
   </div>
 
   <div class="input-group">
@@ -359,7 +377,7 @@
     <button class="submit-btn" onclick="rewriteNews()">Submit</button>
     <button class="clear-btn" onclick="clearFields()">Clear</button>
     <button class="copy-btn" onclick="copyResult()">Copy Result</button>
-    <button class="paste-btn" onclick="pasteFromClipboard()">Paste</button> <!-- NEW PASTE BUTTON -->
+    <button class="paste-btn" onclick="pasteFromClipboard()">Paste</button>
   </div>
 
   <!-- UPDATED: Changed from div to textarea for editing -->
@@ -383,6 +401,30 @@
 
   <script>
     let featuredImageId = null; // This will store the ID from WordPress
+    let lastWatermarkedBlob = null; // Stores the watermarked blob for debugging and upload
+    let originalSelectedFile = null; // Stores the original file selected by the user
+
+    // --- Watermark Image Loading ---
+    let watermarkImage = new Image();
+    let watermarkLoaded = false;
+
+    // Load watermark image
+    watermarkImage.onload = () => {
+        console.log("Watermark: watermark.png loaded successfully.");
+        watermarkLoaded = true;
+        document.getElementById('imageUploadStatus').textContent = "Watermark loaded. Select an image to apply watermark.";
+        document.getElementById('imageUploadStatus').style.color = 'green';
+    };
+
+    watermarkImage.onerror = () => {
+        console.error("Watermark: Failed to load watermark.png. Watermarking will be skipped.");
+        watermarkLoaded = false;
+        document.getElementById('imageUploadStatus').textContent = "Error: Watermark image failed to load. Image processing will proceed without watermarking.";
+        document.getElementById('imageUploadStatus').style.color = 'red';
+    };
+
+    // Set source after setting up event handlers
+    watermarkImage.src = "/static/watermark.png";
 
     // Function to auto-resize textarea
     function autoResizeTextarea(textarea) {
@@ -390,22 +432,219 @@
       textarea.style.height = (textarea.scrollHeight) + 'px'; // Set height to scroll height
     }
 
-    async function uploadFeaturedImage() {
-      const fileInput = document.getElementById('featuredImageFile');
-      const file = fileInput.files[0];
+    // --- New Function: Apply Watermark to Image ---
+    function applyWatermark(file, watermarkImg) {
+        console.log("Watermark: Starting applyWatermark for file:", file.name, "type:", file.type);
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // Set canvas dimensions to match the original image
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        console.log("Watermark: Original image loaded into canvas. Dimensions:", img.width, "x", img.height);
+
+                        // Draw the original image
+                        ctx.drawImage(img, 0, 0);
+
+                        // --- Watermark Drawing Logic ---
+                        const watermarkScale = 0.2; // Watermark will be 20% of the main image's width
+                        const padding = img.width * 0.02; // 2% padding from edges
+
+                        let watermarkDrawWidth = img.width * watermarkScale;
+                        let watermarkDrawHeight = (watermarkImg.naturalHeight / watermarkImg.naturalWidth) * watermarkDrawWidth;
+
+                        // Ensure watermark doesn't exceed image height if it's very tall
+                        if (watermarkDrawHeight > img.height * 0.8) { // Limit to 80% of image height
+                            watermarkDrawHeight = img.height * 0.8;
+                            watermarkDrawWidth = (watermarkImg.naturalWidth / watermarkImg.naturalHeight) * watermarkDrawHeight;
+                        }
+                        console.log("Watermark: Calculated watermark draw dimensions:", watermarkDrawWidth, "x", watermarkDrawHeight);
+
+                        const x = img.width - watermarkDrawWidth - padding;
+                        const y = img.height - watermarkDrawHeight - padding;
+                        console.log("Watermark: Calculated watermark position (x,y):", x, y);
+
+                        ctx.globalAlpha = 0.7; // Set watermark opacity (e.g., 70%)
+                        ctx.drawImage(watermarkImg, x, y, watermarkDrawWidth, watermarkDrawHeight);
+                        ctx.globalAlpha = 1.0; // Reset alpha for subsequent drawings
+                        console.log("Watermark: Watermark drawn on canvas.");
+
+                        // Convert canvas to Blob
+                        // Use original file type, 1.0 quality for JPEG/WebP to preserve quality
+                        // Ensure file.type is a valid MIME type for toBlob
+                        const outputMimeType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+                        console.log("Watermark: Attempting to convert canvas to blob with type:", outputMimeType, "and quality: 1.0");
+
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                console.log("Watermark: Watermarked blob created successfully. Size:", blob.size, "Type:", blob.type);
+                                // Tag the blob so we can identify it as watermarked
+                                blob._isWatermarked = true;
+                                resolve(blob);
+                            } else {
+                                console.error("Watermark: Failed to create blob from canvas (blob is null).");
+                                resolve(null);
+                            }
+                        }, outputMimeType, 1.0); // CHANGED: Quality from 0.9 to 1.0
+                    } catch (error) {
+                        console.error("Watermark: Error in watermarking canvas process:", error);
+                        resolve(null);
+                    }
+                };
+                img.onerror = (error) => {
+                    console.error("Watermark: Failed to load user's image into Image object for watermarking:", error);
+                    resolve(null);
+                };
+                img.src = event.target.result;
+            };
+            reader.onerror = (error) => {
+                console.error("Watermark: Failed to read user's file with FileReader:", error);
+                resolve(null);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // --- NEW: Store the selected file ---
+    document.getElementById('featuredImageFile').addEventListener('change', function(event) {
+        originalSelectedFile = event.target.files[0];
+        const statusDiv = document.getElementById('imageUploadStatus');
+        if (originalSelectedFile) {
+            statusDiv.textContent = `File selected: ${originalSelectedFile.name}. Click 'Apply Watermark'.`;
+            statusDiv.style.color = 'blue';
+            lastWatermarkedBlob = null; // Clear any previously prepared blob
+            featuredImageId = null; // Clear any previous ID
+        } else {
+            statusDiv.textContent = "No file selected.";
+            statusDiv.style.color = 'red';
+        }
+    });
+
+    // --- NEW: Function to apply watermark and prepare for download/upload ---
+    async function applyWatermarkAndPrepareDownload() {
+        const statusDiv = document.getElementById('imageUploadStatus');
+
+        if (!originalSelectedFile) {
+            statusDiv.style.color = 'red';
+            statusDiv.textContent = "Please select an image file first.";
+            console.log("Watermark Apply: No file selected.");
+            return;
+        }
+
+        if (!watermarkLoaded || !watermarkImage.complete || watermarkImage.naturalWidth === 0) {
+            statusDiv.style.color = 'orange';
+            statusDiv.textContent = "Watermark image not loaded. Cannot apply watermark.";
+            console.log("Watermark Apply: Watermark image not ready.");
+            return;
+        }
+
+        statusDiv.style.color = 'orange';
+        statusDiv.textContent = "Applying watermark... Please wait.";
+        console.log("Watermark Apply: Starting watermark application for:", originalSelectedFile.name);
+
+        try {
+            const watermarkedBlob = await applyWatermark(originalSelectedFile, watermarkImage);
+
+            if (watermarkedBlob && watermarkedBlob.size > 0) {
+                lastWatermarkedBlob = watermarkedBlob; // Store the watermarked blob
+                statusDiv.style.color = 'green';
+                statusDiv.textContent = "Watermark applied successfully! Ready for Download or Upload.";
+                console.log("Watermark Apply: Watermark applied and blob stored. Size:", watermarkedBlob.size, "Type:", watermarkedBlob.type, "Is Watermarked Tag:", watermarkedBlob._isWatermarked);
+            } else {
+                statusDiv.style.color = 'red';
+                statusDiv.textContent = "Failed to apply watermark. Please try again or upload original.";
+                console.error("Watermark Apply: Watermarking failed or returned empty blob.");
+                lastWatermarkedBlob = null; // Ensure it's null if failed
+            }
+        } catch (err) {
+            console.error("Watermark Apply: Error during watermarking:", err);
+            statusDiv.style.color = 'red';
+            statusDiv.textContent = `Error applying watermark: ${err.message}.`;
+            lastWatermarkedBlob = null; // Ensure it's null if failed
+        }
+    }
+
+    // --- Existing: Download Watermarked Image (now uses lastWatermarkedBlob) ---
+    function downloadWatermarkedImage() {
+        if (lastWatermarkedBlob) {
+            const url = URL.createObjectURL(lastWatermarkedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            // Use the original file name for the download, but indicate it's watermarked
+            const originalFileName = originalSelectedFile ? originalSelectedFile.name : 'image';
+            const fileNameParts = originalFileName.split('.');
+            const extension = fileNameParts.pop();
+            const baseName = fileNameParts.join('.');
+            a.download = `${baseName}_watermarked.${extension || 'jpg'}`;
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert("Watermarked image downloaded for inspection. Check your downloads folder.");
+            console.log("Debug: Downloaded watermarked blob for inspection.");
+        } else {
+            alert("No watermarked image available to download. Please select an image and click 'Apply Watermark' first.");
+            console.log("Debug: No watermarked blob available for download.");
+        }
+    }
+
+    // --- NEW: Function to upload the prepared (watermarked) image ---
+    async function uploadPreparedImage() {
       const statusDiv = document.getElementById('imageUploadStatus');
 
-      if (!file) {
+      if (!lastWatermarkedBlob) {
         statusDiv.style.color = 'red';
-        statusDiv.textContent = "Please select an image file to upload.";
+        statusDiv.textContent = "No watermarked image prepared. Please select an image and click 'Apply Watermark' first.";
+        console.log("Upload: No watermarked blob available for upload.");
+        return;
+      }
+
+      if (!originalSelectedFile) {
+        statusDiv.style.color = 'red';
+        statusDiv.textContent = "Original file information missing. Please re-select the image.";
+        console.log("Upload: Original file info missing.");
         return;
       }
 
       statusDiv.style.color = 'orange';
-      statusDiv.textContent = "Uploading image... Please wait.";
+      statusDiv.textContent = "Uploading watermarked image to WordPress... Please wait.";
+      console.log("Upload: Starting upload process for watermarked blob (size:", lastWatermarkedBlob.size, "type:", lastWatermarkedBlob.type, "Is Watermarked Tag:", lastWatermarkedBlob._isWatermarked, ").");
+
+      // --- NEW DEBUGGING: Read blob content and log hash ---
+      const readerForHash = new FileReader();
+      readerForHash.onload = function(e) {
+          const arrayBuffer = e.target.result;
+          const byteArray = new Uint8Array(arrayBuffer);
+          let hash = 0;
+          for (let i = 0; i < Math.min(byteArray.length, 1024); i++) { // Hash first 1KB
+              hash = ((hash << 5) - hash) + byteArray[i];
+              hash |= 0; // Convert to 32bit integer
+          }
+          console.log("Client-side watermarked blob SHA-like hash (first 1KB):", hash.toString(16));
+      };
+      readerForHash.readAsArrayBuffer(lastWatermarkedBlob);
+      // --- END NEW DEBUGGING ---
 
       const formData = new FormData();
-      formData.append('file', file);
+      // IMPORTANT: Use the original file name for the blob, so WordPress gets the correct extension
+      formData.append('file', lastWatermarkedBlob, originalSelectedFile.name);
+      console.log("Uploading watermarked blob:", {
+          originalSize: originalSelectedFile.size,
+          watermarkedSize: lastWatermarkedBlob.size,
+          fileName: originalSelectedFile.name,
+          blobType: lastWatermarkedBlob.type,
+          sizeDifference: lastWatermarkedBlob.size - originalSelectedFile.size,
+          isWatermarked: lastWatermarkedBlob._isWatermarked || 'not tagged'
+      });
+      statusDiv.textContent = "Uploading watermarked image...";
+      console.log("Upload: FormData prepared with watermarked blob and original filename. Sending to backend proxy.");
 
       try {
         // Send the file to your Python backend's proxy endpoint
@@ -419,14 +658,16 @@
           featuredImageId = data.id; // Store the WordPress media ID
           statusDiv.style.color = 'green';
           statusDiv.textContent = `Image uploaded successfully! Media ID: ${featuredImageId}`;
+          console.log("Upload: Backend proxy successful. WordPress Media ID:", featuredImageId);
         } else {
           const errorData = await response.json();
           statusDiv.style.color = 'red';
           statusDiv.textContent = `Error uploading image: ${errorData.detail || errorData.message || 'Unknown error'}`;
           featuredImageId = null; // Reset ID on failure
+          console.error("Upload: Backend proxy failed. Status:", response.status, "Error:", errorData);
         }
       } catch (err) {
-        console.error("Error during image upload:", err);
+        console.error("Upload: Error during image upload fetch request:", err);
         statusDiv.style.color = 'red';
         statusDiv.textContent = `Error uploading image: ${err.message}`;
         featuredImageId = null; // Reset ID on failure
@@ -581,9 +822,23 @@
       resultBox.style.color = ''; // Clear inline color
       resultBox.setAttribute('readonly', 'true'); // Ensure it's read-only when cleared
       autoResizeTextarea(resultBox); // Auto-resize to its minimum height
-      document.getElementById("featuredImageFile").value = "";
-      document.getElementById("imageUploadStatus").textContent = ""; // Clear status
-      featuredImageId = null; // Reset featuredImageId
+
+      // Clear image related fields and states
+      document.getElementById("featuredImageFile").value = ""; // Clear file input
+      originalSelectedFile = null; // Clear original file
+      lastWatermarkedBlob = null; // Clear the prepared blob
+      featuredImageId = null; // Clear the WordPress ID
+
+      // Reset status message based on watermark load status
+      const statusDiv = document.getElementById("imageUploadStatus");
+      if (watermarkLoaded && watermarkImage.complete && watermarkImage.naturalWidth > 0) {
+          statusDiv.textContent = "Watermark loaded. Select an image to apply watermark.";
+          statusDiv.style.color = 'green';
+      } else {
+          statusDiv.textContent = "Error: Watermark image failed to load. Image processing will proceed without watermarking.";
+          statusDiv.style.color = 'red';
+      }
+
       document.getElementById("api-select").value = "azure_gpt41";
       document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
         checkbox.checked = false;
@@ -610,7 +865,7 @@
         }
       } catch (err) {
         console.error("Failed to read clipboard contents: ", err);
-        alert("Failed to paste from clipboard. Please ensure you have granted clipboard access to this site.");
+        alert("Failed to paste from clipboard. Please ensure you grant clipboard access to this site.");
       }
     }
 
@@ -694,17 +949,27 @@
     ];
 
     function adToBs(adDate) {
-      const known = new Date('2025-07-30');
-      const baseBS = { year: 2082, month: 4, day: 14 };
+      const known = new Date('2025-07-30'); // AD date corresponding to baseBS
+      const baseBS = { year: 2082, month: 4, day: 14 }; // BS date for known AD date
 
       const diffDays = Math.floor((adDate - known) / (1000 * 60 * 60 * 24));
       let bsY = baseBS.year, bsM = baseBS.month, bsD = baseBS.day + diffDays;
 
       const getMonthLength = (y, m) => {
-        const row = bsData.find(d => d[0] === y);
-        return row ? row[m] : 30;
+        let row = bsData.find(d => d[0] === y);
+        if (!row) {
+            // Fallback to 2082 data if exact year not found.
+            // This will introduce inaccuracies for years far from 2082, 2000, 2090.
+            row = bsData.find(d => d[0] === 2082);
+            if (!row) {
+                console.warn("BS Data for 2082 not found, using generic 30-day month.");
+                return 30; // Absolute fallback if 2082 data is also missing (shouldn't happen)
+            }
+        }
+        return row[m]; // m is 1-indexed for months in bsData
       };
 
+      // Loop to adjust month and year
       while (bsD > getMonthLength(bsY, bsM)) {
         bsD -= getMonthLength(bsY, bsM);
         bsM++;
@@ -753,7 +1018,7 @@
         el.textContent = getNepaliDateTime();
       } catch (e) {
         console.error("Error loading Nepali date:", e);
-        el.textContent = "तिथि प्रदर्शन गर्न असमर्थ";
+        el.textContent = "तिथि प्रदर्शन गर्न असमर्थ"; // "Unable to display date"
       }
     }
 
