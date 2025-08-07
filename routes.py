@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse
 from models import NewsRequest, PublishRequest
@@ -10,10 +9,18 @@ import subprocess
 import os
 import json
 import requests
+import uuid # For generating unique filenames
 import base64
+import hashlib # ADDED for debugging hashes
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Define a temporary directory for uploads within the project
+# Ensure this directory exists and is writable by the FastAPI process
+TEMP_UPLOAD_DIR = "temp_uploads"
+os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
+
 
 @router.get("/", response_class=HTMLResponse)
 async def home():
@@ -105,20 +112,59 @@ async def upload_image(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="Server configuration error: WordPress credentials missing.")
 
     upload_url = f"{wordpress_site_url}/wp-json/wp/v2/media"
+    temp_file_path = None # Initialize to None
 
     try:
+        # 1. Read the incoming file content (the watermarked blob)
         file_content = await file.read()
+        file_size = len(file_content)
+        logger.info(f"Received file: {file.filename}, size: {file_size} bytes, content-type: {file.content_type}")
+        # Log SHA256 hash of the content *received by FastAPI*
+        logger.info(f"FastAPI received content SHA256 (first 1KB): {hashlib.sha256(file_content[:1024]).hexdigest()}")
+
+
+        # 2. Generate a unique temporary filename with the correct extension
+        # Ensure file.filename is not None before splitting
+        original_filename = file.filename if file.filename else "uploaded_file"
+        file_extension = os.path.splitext(original_filename)[1]
+        if not file_extension: # Fallback if no extension is found
+            # Try to infer from content_type if filename has no extension
+            if file.content_type and file.content_type.startswith("image/"):
+                file_extension = "." + file.content_type.split("/")[1]
+            else:
+                file_extension = ".bin" # Generic binary fallback
+
+        temp_filename = f"{uuid.uuid4()}{file_extension}"
+        temp_file_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
+
+        # 3. Save the received content to the temporary file
+        with open(temp_file_path, "wb") as buffer:
+            buffer.write(file_content)
+        logger.info(f"Saved temporary file to: {temp_file_path}")
+        # Log SHA256 hash of the content *written to temp file*
+        with open(temp_file_path, "rb") as check_buffer:
+            temp_file_content_check = check_buffer.read()
+            logger.info(f"Temp file content SHA256 (first 1KB, from disk): {hashlib.sha256(temp_file_content_check[:1024]).hexdigest()}")
+            logger.info(f"Temp file size on disk: {os.path.getsize(temp_file_path)} bytes")
+
+
+        # 4. Prepare for WordPress upload using the saved file
         auth_string = wordpress_app_password
         encoded_auth = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
 
+        # Use the actual content type from the UploadFile
+        actual_content_type = file.content_type if file.content_type else "application/octet-stream"
+
         headers = {
-            "Content-Disposition": f"attachment; filename={file.filename}",
-            "Content-Type": file.content_type,
+            "Content-Disposition": f"attachment; filename={original_filename}", # Use original_filename for header
+            "Content-Type": actual_content_type,
             "Authorization": f"Basic {encoded_auth}"
         }
 
-        logger.info(f"Proxying image upload to WordPress: {upload_url} for file {file.filename}")
-        wp_response = requests.post(upload_url, headers=headers, data=file_content, timeout=30)
+        # Open the saved temporary file in binary read mode
+        with open(temp_file_path, "rb") as f_to_upload:
+            logger.info(f"Proxying image upload to WordPress from temporary file: {upload_url} for file {original_filename} ({file_size} bytes) with Content-Type: {actual_content_type}")
+            wp_response = requests.post(upload_url, headers=headers, data=f_to_upload, timeout=30) # <--- Send the file object
 
         if wp_response.status_code == 201:
             wp_data = wp_response.json()
@@ -135,6 +181,15 @@ async def upload_image(file: UploadFile = File(...)):
         logger.error(f"Unexpected error during image upload proxy: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+    finally:
+        # 5. Clean up: Delete the temporary file
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+                logger.info(f"Cleaned up temporary file: {temp_file_path}")
+            except Exception as e:
+                logger.error(f"Error cleaning up temporary file {temp_file_path}: {e}")
+
 
 @router.post("/publish")
 async def publish(request: PublishRequest):
