@@ -295,6 +295,14 @@
       <option value="openrouter_gpt35">OpenRouter GPT-3.5</option>
       <option value="openrouter_gemma">OpenRouter Gemma</option>
       <option value="openrouter_claude3">OpenRouter Claude-3</option>
+      <!-- NEW PUTER.COM OPTIONS -->
+      <option value="puter_claude_sonnet_4">Puter Claude Sonnet 4</option>
+      <option value="puter_grok_beta">Puter Grok Beta</option>
+      <option value="puter_gemini_2_0_flash">Puter Gemini 2.0 Flash</option>
+      <option value="puter_gemini_1_5_flash">Puter Gemini 1.5 Flash</option>
+      <option value="puter_openai_o3_mini">Puter OpenAI o3-mini</option>
+      <option value="puter_deepseek_chat">Puter DeepSeek Chat</option>
+      <option value="puter_deepseek_reasoner">Puter DeepSeek Reasoner</option>
     </select>
   </div>
 
@@ -341,6 +349,9 @@
     </div>
     &copy; The Rim Online — All Rights Reserved
   </footer>
+
+  <!-- Puter.com SDK Script -->
+  <script src="https://js.puter.com/v2/"></script>
 
   <script>
     let featuredImageId = null; // This will store the ID from WordPress
@@ -415,6 +426,85 @@
       resultBox.style.color = 'initial'; // Ensure default color for processing message
       autoResizeTextarea(resultBox); // Auto-resize for the message
 
+      // Define the system prompt for the AI models
+      const systemPrompt = "You are a professional Nepali news editor. Generate a short and relevant headline, then rewrite the article in totally new style and structure by not losing originality using standard journalistic Nepali. Result must be in the same paragraph count. No need to mention Explanation of changes, Key Changes & style notes just focus on best rewritting result in nepali.";
+      const userPrompt = `Original news:\n${news.replace(/\n\n/g, "\n\n[PARAGRAPH_BREAK]\n\n")}\n\nRewritten news:`;
+
+      // List of Puter.com API options
+      const puterApiModels = [
+        "puter_claude_sonnet_4",
+        "puter_grok_beta",
+        "puter_gemini_2_0_flash",
+        "puter_gemini_1_5_flash",
+        "puter_openai_o3_mini",
+        "puter_deepseek_chat",
+        "puter_deepseek_reasoner"
+      ];
+
+      // --- Puter.com API Calls (Client-Side) ---
+      if (puterApiModels.includes(api)) {
+        try {
+          // Ensure puter.ai is available
+          if (typeof puter === 'undefined' || typeof puter.ai === 'undefined' || typeof puter.ai.chat === 'undefined') {
+            resultBox.value = "Puter.com SDK not loaded or initialized. Please check your internet connection or the script tag.";
+            resultBox.classList.add('error-text');
+            autoResizeTextarea(resultBox);
+            return;
+          }
+
+          let modelName;
+          switch (api) {
+            case "puter_claude_sonnet_4": modelName = "claude-sonnet-4"; break;
+            case "puter_grok_beta": modelName = "grok-beta"; break;
+            case "puter_gemini_2_0_flash": modelName = "gemini-2.0-flash"; break;
+            case "puter_gemini_1_5_flash": modelName = "gemini-1.5-flash"; break;
+            case "puter_openai_o3_mini": modelName = "o3-mini"; break;
+            case "puter_deepseek_chat": modelName = "deepseek-chat"; break;
+            case "puter_deepseek_reasoner": modelName = "deepseek-reasoner"; break;
+            default: modelName = ""; // Should not happen due to includes check
+          }
+
+          resultBox.value = `Calling Puter.com ${modelName}...`;
+          autoResizeTextarea(resultBox);
+
+          let fullResponse = "";
+          const chat_resp = await puter.ai.chat(userPrompt, {
+            model: modelName,
+            stream: true,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ]
+          });
+
+          for await (const part of chat_resp) {
+            if (part && part.text) {
+              fullResponse += part.text;
+              resultBox.value = fullResponse.replace(/\[PARAGRAPH_BREAK\]/g, "\n");
+              autoResizeTextarea(resultBox); // Update as content streams
+            }
+          }
+
+          if (fullResponse) {
+            resultBox.value = fullResponse.replace(/\[PARAGRAPH_BREAK\]/g, "\n");
+            resultBox.removeAttribute('readonly');
+            autoResizeTextarea(resultBox);
+          } else {
+            resultBox.value = `Error: No response from Puter.com ${modelName}.`;
+            resultBox.classList.add('error-text');
+            autoResizeTextarea(resultBox);
+          }
+
+        } catch (err) {
+          console.error("Error calling Puter.com API:", err);
+          resultBox.value = `Error calling Puter.com API: ${err.message || 'Unknown error'}.`;
+          resultBox.classList.add('error-text');
+          autoResizeTextarea(resultBox);
+        }
+        return; // Exit function after handling Puter.com API
+      }
+
+      // --- Existing Backend API Calls ---
       try {
         const response = await fetch("/rewrite", {
           method: "POST",
