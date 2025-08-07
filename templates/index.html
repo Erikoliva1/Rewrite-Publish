@@ -149,6 +149,15 @@
       background-color: #218838;
     }
 
+    .paste-btn { /* NEW PASTE BUTTON STYLE */
+      background-color: #17a2b8; /* Info blue color */
+      color: white;
+    }
+
+    .paste-btn:hover {
+      background-color: #138496; /* Darker blue */
+    }
+
     .upload-btn {
       background-color: #ffc107; /* Yellowish color */
       color: #333;
@@ -191,6 +200,12 @@
     .output[readonly] {
       background-color: #e9ecef; /* Lighter background to indicate non-editable */
       cursor: not-allowed;
+    }
+
+    /* Ensure publish button is full width if in its own group */
+    .publish-button-group .publish-btn {
+        flex: 1; /* Make it take full width if it's the only button in its group */
+        width: 100%; /* Ensure it takes full width */
     }
 
     footer {
@@ -254,6 +269,15 @@
         font-size: 15px;
         padding: 10px;
         min-height: 150px;
+      }
+
+      /* Adjustments for mobile responsiveness for the new publish button group */
+      .publish-button-group {
+        flex-direction: column;
+      }
+      .publish-button-group .publish-btn {
+        width: 100%;
+        font-size: 15px;
       }
     }
   </style>
@@ -335,11 +359,15 @@
     <button class="submit-btn" onclick="rewriteNews()">Submit</button>
     <button class="clear-btn" onclick="clearFields()">Clear</button>
     <button class="copy-btn" onclick="copyResult()">Copy Result</button>
-    <button class="publish-btn" onclick="publishNews()">Publish</button>
+    <button class="paste-btn" onclick="pasteFromClipboard()">Paste</button> <!-- NEW PASTE BUTTON -->
   </div>
 
   <!-- UPDATED: Changed from div to textarea for editing -->
   <textarea class="output" id="resultBox" placeholder="Rewritten news will appear here..." readonly></textarea>
+
+  <div class="button-group publish-button-group" style="margin-top: 15px;"> <!-- New button group for publish -->
+    <button class="publish-btn" onclick="publishNews()">Publish</button>
+  </div>
 
   <footer>
     <div class="creator-info">
@@ -568,6 +596,22 @@
       navigator.clipboard.writeText(resultText)
         .then(() => alert("Result copied to clipboard!"))
         .catch(err => alert("Copy failed."));
+    }
+
+    async function pasteFromClipboard() {
+      const newsInput = document.getElementById("news");
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          newsInput.value = text;
+          alert("Content pasted from clipboard!");
+        } else {
+          alert("Clipboard is empty or does not contain text.");
+        }
+      } catch (err) {
+        console.error("Failed to read clipboard contents: ", err);
+        alert("Failed to paste from clipboard. Please ensure you have granted clipboard access to this site.");
+      }
     }
 
     async function publishNews() {
