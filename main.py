@@ -1,5 +1,5 @@
-
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from routes import router
 import uvicorn
 import os
@@ -35,10 +35,14 @@ logger.info(f"WORDPRESS_APP_PASSWORD: {'*' * len(wordpress_app_password) if word
 logger.info(f"WORDPRESS_SITE_URL: {wordpress_site_url if wordpress_site_url else 'N/A'}")
 
 app = FastAPI()
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 app.include_router(router)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     host = os.environ.get("HOST", "0.0.0.0")
     logger.info(f"Starting Uvicorn server on {host}:{port}")
     uvicorn.run(app, host=host, port=port)
