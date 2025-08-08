@@ -8,3 +8,4 @@ pydantic
 requests
 brotli
 python-multipart
+passlib
