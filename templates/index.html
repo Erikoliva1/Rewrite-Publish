@@ -357,19 +357,10 @@
 
   <div class="input-group">
     <label>Categories:</label>
-    <div class="checkbox-group">
-      <div><input type="checkbox" id="cat_mukhya" value="मुख्य समाचार"><label for="cat_mukhya">मुख्य समाचार</label></div>
-      <div><input type="checkbox" id="cat_samachar" value="समाचार"><label for="cat_samachar">समाचार</label></div>
-      <div><input type="checkbox" id="cat_desh" value="देश"><label for="cat_desh">देश</label></div>
-      <div><input type="checkbox" id="cat_rajniti" value="राजनिति"><label for="cat_rajniti">राजनिति</label></div>
-      <div><input type="checkbox" id="cat_artha" value="अर्थ"><label for="cat_artha">अर्थ</label></div>
-      <div><input type="checkbox" id="cat_khelkud" value="खेलकुद"><label for="cat_khelkud">खेलकुद</label></div>
-      <div><input type="checkbox" id="cat_feature" value="फिचर"><label for="cat_feature">फिचर</label></div>
-      <div><input type="checkbox" id="cat_manoranjan" value="मनोरञ्जन"><label for="cat_manoranjan">मनोरञ्जन</label></div>
-      <div><input type="checkbox" id="cat_vichar" value="विचार"><label for="cat_vichar">विचार</label></div>
-      <div><input type="checkbox" id="cat_videsh" value="विदेश"><label for="cat_videsh">विदेश</label></div>
-      <div><input type="checkbox" id="cat_swasthya" value="स्वास्थ्य/जीवनशैली"><label for="cat_swasthya">स्वास्थ्य/जीवनशैली</label></div>
-      <div><input type="checkbox" id="cat_Banner" value="Banner"><label for="cat_Banner">Banner</label></div>
+    <div class="checkbox-group" id="category-checkboxes">
+      <!-- Categories will be loaded here dynamically -->
+      <!-- Initial loading state -->
+      <div><input type="checkbox" id="cat_loading" value="" disabled><label for="cat_loading">Loading categories...</label></div>
     </div>
   </div>
 
@@ -466,14 +457,28 @@
                         }
                         console.log("Watermark: Calculated watermark draw dimensions:", watermarkDrawWidth, "x", watermarkDrawHeight);
 
-                        const x = img.width - watermarkDrawWidth - padding;
-                        const y = img.height - watermarkDrawHeight - padding;
-                        console.log("Watermark: Calculated watermark position (x,y):", x, y);
-
                         ctx.globalAlpha = 0.7; // Set watermark opacity (e.g., 70%)
-                        ctx.drawImage(watermarkImg, x, y, watermarkDrawWidth, watermarkDrawHeight);
+
+                        // Watermark 1: Top-Left Corner
+                        const x1 = padding;
+                        const y1 = padding;
+                        console.log("Watermark 1: Calculated position (x,y):", x1, y1);
+                        ctx.drawImage(watermarkImg, x1, y1, watermarkDrawWidth, watermarkDrawHeight);
+
+                        // Watermark 2: Center, 75% down from the top
+                        const x2 = (img.width - watermarkDrawWidth) / 2; // Center horizontally
+                        const y2 = img.height * 0.75 - (watermarkDrawHeight / 2); // 75% down, centered vertically
+                        console.log("Watermark 2: Calculated position (x,y):", x2, y2);
+                        ctx.drawImage(watermarkImg, x2, y2, watermarkDrawWidth, watermarkDrawHeight);
+
+                        // REMOVED: Watermark 3: Bottom-Right Corner
+                        // const x3 = img.width - watermarkDrawWidth - padding;
+                        // const y3 = img.height - watermarkDrawHeight - padding;
+                        // console.log("Watermark 3: Calculated position (x,y):", x3, y3);
+                        // ctx.drawImage(watermarkImg, x3, y3, watermarkDrawWidth, watermarkDrawHeight);
+
                         ctx.globalAlpha = 1.0; // Reset alpha for subsequent drawings
-                        console.log("Watermark: Watermark drawn on canvas.");
+                        console.log("Watermark: Watermarks drawn on canvas.");
 
                         // Convert canvas to Blob
                         // Use original file type, 1.0 quality for JPEG/WebP to preserve quality
@@ -840,7 +845,8 @@
       }
 
       document.getElementById("api-select").value = "azure_gpt41";
-      document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+      // Clear all category checkboxes
+      document.querySelectorAll('#category-checkboxes input[type="checkbox"]').forEach(checkbox => {
         checkbox.checked = false;
       });
     }
@@ -878,10 +884,12 @@
       resultBox.style.color = ''; // Reset inline color
       resultBox.setAttribute('readonly', 'true'); // Make it read-only for messages
 
-      const selectedCategories = Array.from(document.querySelectorAll('input[id^="cat_"]:checked'))
-                                    .map(cb => cb.value);
-      const selectedTags = Array.from(document.querySelectorAll('input[id^="tag_"]:checked'))
-                                .map(cb => cb.value);
+      // MODIFIED: Get category names from the checkbox values
+      const selectedCategories = Array.from(document.querySelectorAll('#category-checkboxes input[type="checkbox"]:checked'))
+                                    .map(cb => cb.value); // Use .value which is the category name
+
+      // Tags are not directly selected in the UI, they are auto-generated by publish.py
+      const selectedTags = []; // No direct tag selection in UI
 
       if (!rewrittenNews) {
         resultBox.value = "Please rewrite the news first."; // Use .value for textarea
@@ -894,8 +902,7 @@
       resultBox.style.color = 'initial'; // Ensure default color for publishing message
       autoResizeTextarea(resultBox); // Auto-resize for the message
 
-      // REMOVED: The prefixesToRemove logic is no longer needed here
-      let cleanedNews = rewrittenNews; // Use the user-edited content directly
+      let cleanedNews = rewrittenNews;
 
       try {
         const response = await fetch("/publish", {
@@ -906,8 +913,8 @@
           body: JSON.stringify({
             news: cleanedNews,
             featured_image_id: featuredImageId, // Use the stored media ID
-            categories: selectedCategories,
-            tags: selectedTags
+            categories: selectedCategories, // Pass category names
+            tags: selectedTags // Pass empty array, publish.py will auto-generate
           })
         });
 
@@ -1022,6 +1029,53 @@
       }
     }
 
+    // --- Dynamic Category Loading ---
+    async function loadCategories() {
+        const categoryCheckboxesDiv = document.getElementById('category-checkboxes');
+        // Display loading state
+        categoryCheckboxesDiv.innerHTML = '<div><input type="checkbox" id="cat_loading" value="" disabled><label for="cat_loading">Loading categories...</label></div>';
+
+        try {
+            // Fetch categories from the backend proxy endpoint
+            const response = await fetch('/wp-categories');
+            if (!response.ok) {
+                // If response is not OK, try to parse error message
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+            const categories = await response.json();
+            console.log("Fetched categories:", categories);
+
+            categoryCheckboxesDiv.innerHTML = ''; // Clear loading state
+
+            if (categories.length === 0) {
+                categoryCheckboxesDiv.innerHTML = '<div><label>No categories found.</label></div>';
+                return;
+            }
+
+            categories.forEach(cat => {
+                const div = document.createElement('div');
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.id = `cat_${cat.slug}`; // Use slug for unique ID
+                input.value = cat.name; // Store category name as value, as publish.py expects names
+                input.dataset.id = cat.id; // Store category ID in a data attribute (for potential future use)
+
+                const label = document.createElement('label');
+                label.htmlFor = `cat_${cat.slug}`;
+                label.textContent = cat.name;
+
+                div.appendChild(input);
+                div.appendChild(label);
+                categoryCheckboxesDiv.appendChild(div);
+            });
+        } catch (error) {
+            console.error("Failed to load categories:", error);
+            categoryCheckboxesDiv.innerHTML = `<div><label style="color: red;">Error loading categories: ${error.message || 'Unknown error'}.</label></div>`;
+        }
+    }
+
+
     // Initial calls on page load
     loadNepaliDateTime();
     setInterval(loadNepaliDateTime, 60000);
@@ -1032,6 +1086,9 @@
       resultBox.addEventListener('input', () => autoResizeTextarea(resultBox));
       // Initial resize in case there's placeholder text or default content
       autoResizeTextarea(resultBox);
+
+      // Load categories on page load
+      loadCategories();
     });
   </script>
 
