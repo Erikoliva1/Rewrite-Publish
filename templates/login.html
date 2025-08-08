@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - The Rim Online</title>
+  <link rel="icon" href="https://i.ibb.co/BKqH689b/logo.png" type="image/png" />
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f2f2f2;
+      color: #222;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .login-container {
+      background-color: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+    }
+    .logo-container {
+      margin-bottom: 20px;
+    }
+    .logo-container img {
+      max-width: 80px;
+      height: auto;
+    }
+    .rim-online-text {
+      color: #ED2024;
+      font-weight: bold;
+      font-size: 1.5rem;
+      margin-top: 5px;
+      letter-spacing: 1px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: #333;
+      margin-bottom: 25px;
+    }
+    .input-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+    }
+    .input-group input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      transition: background-color 0.2s ease-in-out;
+    }
+    .submit-btn:hover {
+      background-color: #0056b3;
+    }
+    .error-message {
+      color: red;
+      margin-top: 15px;
+      font-size: 0.9em;
+    }
+    footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #666;
+    }
+    footer a {
+      color: #007bff;
+      text-decoration: underline;
+    }
+    @media screen and (max-width: 600px) {
+      .login-container {
+        padding: 30px 20px;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      .rim-online-text {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo-container">
+      <img src="https://i.ibb.co/BKqH689b/logo.png" alt="The Rim Online Logo" />
+      <div class="rim-online-text">THE RIM ONLINE</div>
+    </div>
+    <h1>Access Required</h1>
+    <form id="loginForm">
+      <div class="input-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required autofocus>
+      </div>
+      <button type="submit" class="submit-btn">Login</button>
+      <p id="errorMessage" class="error-message" style="display: none;"></p>
+    </form>
+    <footer>
+      <div class="creator-info">
+        Created by <a href="https://www.facebook.com/prabhatyadav99" target="_blank">Prabhat Yadav</a> <br />
+        <a href="mailto:prabhatyadav2003@gmail.com">prabhatyadav2003@gmail.com</a> |
+        <a href="tel:+977 9705858058">+977 9705858058</a>
+      </div>
+      &copy; The Rim Online — All Rights Reserved
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(event) {
+      event.preventDefault();
+      const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('errorMessage');
+      errorMessage.style.display = 'none';
+
+      try {
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ password: password })
+        });
+
+        if (response.ok) {
+          // If login is successful, redirect to the main page
+          window.location.href = '/';
+        } else {
+          const errorData = await response.json();
+          errorMessage.textContent = errorData.detail || 'Invalid password.';
+          errorMessage.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorMessage.textContent = 'An error occurred during login. Please try again.';
+        errorMessage.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
