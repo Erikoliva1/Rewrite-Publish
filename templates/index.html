@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>The Rim Online</title>
-  <link rel="icon" href="https://i.ibb.co/BKqH689b/logo.png" type="image/png" />
+  <link rel="icon" href="/static/logo.png" type="image/png" />
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -44,14 +44,14 @@
     }
 
     /* Original news input textarea */
-    textarea#news { /* Specific selector for the input textarea */
+    textarea#news {
       width: 100%;
       font-size: 16px;
       padding: 15px;
       border-radius: 8px;
       border: 1px solid #ccc;
-      resize: vertical; /* Keep resize for the input textarea */
-      min-height: 200px; /* Keep min-height for the input textarea */
+      resize: vertical;
+      min-height: 200px;
       box-sizing: border-box;
       margin-top: 10px;
     }
@@ -68,7 +68,7 @@
 
     .input-group input[type="text"],
     .input-group select,
-    .input-group input[type="file"] { /* Added file input */
+    .input-group input[type="file"] {
       width: 100%;
       padding: 10px;
       font-size: 16px;
@@ -117,48 +117,39 @@
       background-color: #007bff;
       color: white;
     }
-
-    .submit-btn:hover {
-      background-color: #0056b3;
-    }
+    .submit-btn:hover { background-color: #0056b3; }
 
     .publish-btn {
       background-color: #ED2024;
       color: white;
     }
+    .publish-btn:hover { background-color: #C7181B; }
 
-    .publish-btn:hover {
-      background-color: #C7181B; /* Darker shade of red for hover effect */
+    .draft-btn {
+      background-color: #ffc107;
+      color: #333;
     }
+    .draft-btn:hover { background-color: #e0a800; }
 
     .clear-btn {
       background-color: #6c757d;
       color: white;
     }
-
-    .clear-btn:hover {
-      background-color: #5a6268;
-    }
+    .clear-btn:hover { background-color: #5a6268; }
 
     .copy-btn {
       background-color: #28a745;
       color: white;
     }
+    .copy-btn:hover { background-color: #218838; }
 
-    .copy-btn:hover {
-      background-color: #218838;
-    }
-
-    .paste-btn { /* NEW PASTE BUTTON STYLE */
-      background-color: #17a2b8; /* Info blue color */
+    .paste-btn {
+      background-color: #17a2b8;
       color: white;
     }
+    .paste-btn:hover { background-color: #138496; }
 
-    .paste-btn:hover {
-      background-color: #138496; /* Darker blue */
-    }
-
-    /* NEW: Style for the image action buttons */
+    /* Image action buttons */
     .action-btn {
       flex: 1;
       padding: 12px;
@@ -167,52 +158,43 @@
       border-radius: 6px;
       cursor: pointer;
       transition: background-color 0.2s ease-in-out;
-      min-width: 150px; /* Ensure buttons don't get too small */
+      min-width: 150px;
     }
+    .action-btn:hover { opacity: 0.9; }
 
-    .action-btn:hover {
-      opacity: 0.9; /* Simple hover effect */
-    }
-
-
-    /* UPDATED: Styles for the editable output textarea */
-    textarea.output { /* Specific selector for the output textarea */
+    /* Output textarea */
+    textarea.output {
       margin-top: 20px;
       background: white;
       padding: 20px;
       border-radius: 8px;
       border: 1px solid #ddd;
-      white-space: pre-wrap; /* Preserve whitespace and line breaks */
+      white-space: pre-wrap;
       line-height: 1.6;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-      width: 100%; /* Ensure it takes full width */
-      box-sizing: border-box; /* Include padding in width */
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* Match body font */
-      font-size: 16px; /* Match other textareas */
-      color: #222; /* Default text color */
-      overflow: hidden; /* Hide scrollbar initially */
-      min-height: 100px; /* A smaller initial height for auto-grow */
-      resize: none; /* REMOVED: Disable manual resizing */
+      width: 100%;
+      box-sizing: border-box;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 16px;
+      color: #222;
+      overflow: hidden;
+      min-height: 100px;
+      resize: none;
     }
 
-    .output.error-text {
-      color: red;
-    }
+    .output.error-text { color: red; }
+    .output.warning-text { color: orange; }
 
-    .output.warning-text {
-      color: orange;
-    }
-
-    /* Style for read-only state */
     .output[readonly] {
-      background-color: #e9ecef; /* Lighter background to indicate non-editable */
+      background-color: #e9ecef;
       cursor: not-allowed;
     }
 
-    /* Ensure publish button is full width if in its own group */
-    .publish-button-group .publish-btn {
-        flex: 1; /* Make it take full width if it's the only button in its group */
-        width: 100%; /* Ensure it takes full width */
+    .publish-button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
     }
 
     footer {
@@ -222,76 +204,23 @@
       color: #333;
     }
 
-    .creator-info {
-      margin-bottom: 10px;
-      font-size: 12px;
-    }
+    .creator-info { margin-bottom: 10px; font-size: 12px; }
 
-    footer a {
-      color: #007bff;
-      text-decoration: underline;
-    }
+    footer a { color: #007bff; text-decoration: underline; }
 
-    /* Mobile responsive styles */
+    /* Mobile */
     @media screen and (max-width: 600px) {
-      body {
-        padding: 10px;
-        font-size: 15px;
-      }
-
-      .rim-online-text {
-        font-size: 1rem;
-        margin-bottom: 20px;
-      }
-
-      .header-datetime {
-        font-size: 13px;
-        margin-bottom: 15px;
-      }
-
-      .button-group {
-        flex-direction: column;
-      }
-
-      .button-group button {
-        width: 100%;
-        font-size: 15px;
-      }
-
-      textarea.output { /* Specific selector for the output textarea */
-        font-size: 14px;
-        padding: 15px;
-        min-height: 100px; /* Adjusted for smaller screens */
-      }
-
-      footer {
-        font-size: 12px;
-      }
-
-      .creator-info {
-        font-size: 11px;
-      }
-
-      textarea#news { /* Specific selector for the input textarea */
-        font-size: 15px;
-        padding: 10px;
-        min-height: 150px;
-      }
-
-      /* Adjustments for mobile responsiveness for the new publish button group */
-      .publish-button-group {
-        flex-direction: column;
-      }
-      .publish-button-group .publish-btn {
-        width: 100%;
-        font-size: 15px;
-      }
-
-      /* NEW: Mobile adjustments for image action buttons */
-      .button-group .action-btn {
-        width: 100%;
-        min-width: unset; /* Remove min-width on mobile */
-      }
+      body { padding: 10px; font-size: 15px; }
+      .rim-online-text { font-size: 1rem; margin-bottom: 20px; }
+      .header-datetime { font-size: 13px; margin-bottom: 15px; }
+      .button-group { flex-direction: column; }
+      .button-group button { width: 100%; font-size: 15px; }
+      textarea.output { font-size: 14px; padding: 15px; min-height: 100px; }
+      footer { font-size: 12px; }
+      .creator-info { font-size: 11px; }
+      textarea#news { font-size: 15px; padding: 10px; min-height: 150px; }
+      .publish-button-group { flex-direction: column; }
+      .button-group .action-btn { width: 100%; min-width: unset; }
     }
   </style>
 </head>
@@ -299,7 +228,7 @@
 
   <div class="logo-container">
     <a href="https://therimonline.com/" target="_blank">
-      <img src="https://i.ibb.co/BKqH689b/logo.png" alt="The Rim Online Logo" />
+      <img src="/static/logo.png" alt="The Rim Online Logo" />
     </a>
     <div class="rim-online-text">THE RIM ONLINE</div>
 
@@ -375,7 +304,8 @@
   <textarea class="output" id="resultBox" placeholder="Rewritten news will appear here..." readonly></textarea>
 
   <div class="button-group publish-button-group" style="margin-top: 15px;"> <!-- New button group for publish -->
-    <button class="publish-btn" onclick="publishNews()">Publish</button>
+    <button class="publish-btn" onclick="publishNews('publish')">Publish</button>
+    <button class="draft-btn" onclick="publishNews('draft')">Save as Draft</button>
   </div>
 
   <footer>
@@ -385,6 +315,9 @@
       <a href="tel:+977 9705858058">+977 9705858058</a>
     </div>
     &copy; The Rim Online — All Rights Reserved
+    <div style="margin-top: 10px;">
+        <button class="clear-btn" onclick="logout()">Logout</button>
+    </div>
   </footer>
 
   <!-- Puter.com SDK Script -->
@@ -415,7 +348,7 @@
     };
 
     // Set source after setting up event handlers
-    watermarkImage.src = "/static/watermark.png";
+    watermarkImage.src = "/static/watermark.png"; // Changed to local static path
 
     // Function to auto-resize textarea
     function autoResizeTextarea(textarea) {
@@ -471,32 +404,23 @@
                         console.log("Watermark 2: Calculated position (x,y):", x2, y2);
                         ctx.drawImage(watermarkImg, x2, y2, watermarkDrawWidth, watermarkDrawHeight);
 
-                        // REMOVED: Watermark 3: Bottom-Right Corner
-                        // const x3 = img.width - watermarkDrawWidth - padding;
-                        // const y3 = img.height - watermarkDrawHeight - padding;
-                        // console.log("Watermark 3: Calculated position (x,y):", x3, y3);
-                        // ctx.drawImage(watermarkImg, x3, y3, watermarkDrawWidth, watermarkDrawHeight);
-
                         ctx.globalAlpha = 1.0; // Reset alpha for subsequent drawings
                         console.log("Watermark: Watermarks drawn on canvas.");
 
                         // Convert canvas to Blob
-                        // Use original file type, 1.0 quality for JPEG/WebP to preserve quality
-                        // Ensure file.type is a valid MIME type for toBlob
                         const outputMimeType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
                         console.log("Watermark: Attempting to convert canvas to blob with type:", outputMimeType, "and quality: 1.0");
 
                         canvas.toBlob((blob) => {
                             if (blob) {
                                 console.log("Watermark: Watermarked blob created successfully. Size:", blob.size, "Type:", blob.type);
-                                // Tag the blob so we can identify it as watermarked
                                 blob._isWatermarked = true;
                                 resolve(blob);
                             } else {
                                 console.error("Watermark: Failed to create blob from canvas (blob is null).");
                                 resolve(null);
                             }
-                        }, outputMimeType, 1.0); // CHANGED: Quality from 0.9 to 1.0
+                        }, outputMimeType, 1.0);
                     } catch (error) {
                         console.error("Watermark: Error in watermarking canvas process:", error);
                         resolve(null);
@@ -622,23 +546,7 @@
       statusDiv.textContent = "Uploading watermarked image to WordPress... Please wait.";
       console.log("Upload: Starting upload process for watermarked blob (size:", lastWatermarkedBlob.size, "type:", lastWatermarkedBlob.type, "Is Watermarked Tag:", lastWatermarkedBlob._isWatermarked, ").");
 
-      // --- NEW DEBUGGING: Read blob content and log hash ---
-      const readerForHash = new FileReader();
-      readerForHash.onload = function(e) {
-          const arrayBuffer = e.target.result;
-          const byteArray = new Uint8Array(arrayBuffer);
-          let hash = 0;
-          for (let i = 0; i < Math.min(byteArray.length, 1024); i++) { // Hash first 1KB
-              hash = ((hash << 5) - hash) + byteArray[i];
-              hash |= 0; // Convert to 32bit integer
-          }
-          console.log("Client-side watermarked blob SHA-like hash (first 1KB):", hash.toString(16));
-      };
-      readerForHash.readAsArrayBuffer(lastWatermarkedBlob);
-      // --- END NEW DEBUGGING ---
-
       const formData = new FormData();
-      // IMPORTANT: Use the original file name for the blob, so WordPress gets the correct extension
       formData.append('file', lastWatermarkedBlob, originalSelectedFile.name);
       console.log("Uploading watermarked blob:", {
           originalSize: originalSelectedFile.size,
@@ -652,7 +560,6 @@
       console.log("Upload: FormData prepared with watermarked blob and original filename. Sending to backend proxy.");
 
       try {
-        // Send the file to your Python backend's proxy endpoint
         const response = await fetch('/upload-image', {
           method: 'POST',
           body: formData,
@@ -875,7 +782,7 @@
       }
     }
 
-    async function publishNews() {
+    async function publishNews(postStatus) { // Added postStatus parameter
       const resultBox = document.getElementById("resultBox");
       const rewrittenNews = resultBox.value.trim(); // Use .value for textarea
 
@@ -898,7 +805,7 @@
         return;
       }
 
-      resultBox.value = "Please wait... Publishing your news..."; // Use .value for textarea
+      resultBox.value = `Please wait... ${postStatus === 'publish' ? 'Publishing' : 'Saving as Draft'} your news...`; // Use .value for textarea
       resultBox.style.color = 'initial'; // Ensure default color for publishing message
       autoResizeTextarea(resultBox); // Auto-resize for the message
 
@@ -914,7 +821,8 @@
             news: cleanedNews,
             featured_image_id: featuredImageId, // Use the stored media ID
             categories: selectedCategories, // Pass category names
-            tags: selectedTags // Pass empty array, publish.py will auto-generate
+            tags: selectedTags, // Pass empty array, publish.py will auto-generate
+            post_status: postStatus // Pass the post status (publish or draft)
           })
         });
 
@@ -939,6 +847,28 @@
         resultBox.classList.add('error-text'); // Add error class
         autoResizeTextarea(resultBox); // Auto-resize for the error message
       }
+    }
+
+    async function logout() {
+        if (confirm("Are you sure you want to log out?")) {
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    window.location.href = '/login'; // Redirect to login page
+                } else {
+                    alert('Logout failed. Please try again.');
+                    console.error('Logout failed:', await response.text());
+                }
+            } catch (error) {
+                alert('An error occurred during logout.');
+                console.error('Logout error:', error);
+            }
+        }
     }
 
     function toNepaliDigits(str) {
@@ -966,14 +896,13 @@
         let row = bsData.find(d => d[0] === y);
         if (!row) {
             // Fallback to 2082 data if exact year not found.
-            // This will introduce inaccuracies for years far from 2082, 2000, 2090.
             row = bsData.find(d => d[0] === 2082);
             if (!row) {
                 console.warn("BS Data for 2082 not found, using generic 30-day month.");
-                return 30; // Absolute fallback if 2082 data is also missing (shouldn't happen)
+                return 30;
             }
         }
-        return row[m]; // m is 1-indexed for months in bsData
+        return row[m];
       };
 
       // Loop to adjust month and year
@@ -1032,21 +961,18 @@
     // --- Dynamic Category Loading ---
     async function loadCategories() {
         const categoryCheckboxesDiv = document.getElementById('category-checkboxes');
-        // Display loading state
         categoryCheckboxesDiv.innerHTML = '<div><input type="checkbox" id="cat_loading" value="" disabled><label for="cat_loading">Loading categories...</label></div>';
 
         try {
-            // Fetch categories from the backend proxy endpoint
             const response = await fetch('/wp-categories');
             if (!response.ok) {
-                // If response is not OK, try to parse error message
                 const errorText = await response.text();
                 throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
             }
             const categories = await response.json();
             console.log("Fetched categories:", categories);
 
-            categoryCheckboxesDiv.innerHTML = ''; // Clear loading state
+            categoryCheckboxesDiv.innerHTML = '';
 
             if (categories.length === 0) {
                 categoryCheckboxesDiv.innerHTML = '<div><label>No categories found.</label></div>';
@@ -1057,9 +983,9 @@
                 const div = document.createElement('div');
                 const input = document.createElement('input');
                 input.type = 'checkbox';
-                input.id = `cat_${cat.slug}`; // Use slug for unique ID
-                input.value = cat.name; // Store category name as value, as publish.py expects names
-                input.dataset.id = cat.id; // Store category ID in a data attribute (for potential future use)
+                input.id = `cat_${cat.slug}`;
+                input.value = cat.name;
+                input.dataset.id = cat.id;
 
                 const label = document.createElement('label');
                 label.htmlFor = `cat_${cat.slug}`;
@@ -1084,10 +1010,8 @@
     document.addEventListener('DOMContentLoaded', () => {
       const resultBox = document.getElementById('resultBox');
       resultBox.addEventListener('input', () => autoResizeTextarea(resultBox));
-      // Initial resize in case there's placeholder text or default content
       autoResizeTextarea(resultBox);
 
-      // Load categories on page load
       loadCategories();
     });
   </script>
