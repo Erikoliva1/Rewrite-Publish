@@ -299,8 +299,8 @@
       <option value="puter_llama_3_2_90b_vision_instruct_turbo">Puter Llama 3.2 90B Vision Instruct Turbo</option>
       <option value="puter_qwen_2_5_72b_instruct_turbo">Puter Qwen 2.5 72B Instruct Turbo</option>
       <option value="puter_qwen_3_235b_a22b_instruct_2507_tput">Puter Qwen 3 235B Instruct Tput</option>
-      <option value="openrouter_deepseek_r1_0528_free">OpenRouter DeepSeek R1 0528 (Free)</option>
       <option value="puter_qwen_3_coder_480b_a35b_instruct_fp8">Puter Qwen 3 Coder 480B Instruct FP8</option>
+      <option value="puter_openrouter_deepseek_r1_0528_free">Puter OpenRouter DeepSeek R1 0528 (Free)</option>
     </select>
   </div>
 
@@ -682,8 +682,8 @@
         "puter_llama_3_2_90b_vision_instruct_turbo",
         "puter_qwen_2_5_72b_instruct_turbo",
         "puter_qwen_3_235b_a22b_instruct_2507_tput",
-        "puter_qwen_3_coder_480b_a35b_instruct_fp8"
-        "openrouter:deepseek/deepseek-r1-0528:free"
+        "puter_qwen_3_coder_480b_a35b_instruct_fp8",
+        "puter_openrouter_deepseek_r1_0528_free" // Added new model to list
       ];
 
       // --- Puter.com API Calls (Client-Side) ---
@@ -735,9 +735,9 @@
             case "puter_llama_3_2_11b_vision_instruct_turbo": modelName = "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo"; break;
             case "puter_llama_3_2_90b_vision_instruct_turbo": modelName = "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo"; break;
             case "puter_qwen_2_5_72b_instruct_turbo": modelName = "Qwen/Qwen2.5-72B-Instruct-Turbo"; break;
-            case "openrouter_deepseek_r1_0528_free": modelName = "openrouter:deepseek/deepseek-r1-0528:free"; break;
             case "puter_qwen_3_235b_a22b_instruct_2507_tput": modelName = "Qwen/Qwen3-235B-A22B-Instruct-2507-tput"; break;
             case "puter_qwen_3_coder_480b_a35b_instruct_fp8": modelName = "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8"; break;
+            case "puter_openrouter_deepseek_r1_0528_free": modelName = "openrouter:deepseek/deepseek-r1-0528:free"; break; // Added new model mapping
             default: modelName = ""; // Should not happen due to includes check
           }
 
@@ -773,8 +773,23 @@
           }
 
         } catch (err) {
-          console.error("Error calling Puter.com API:", err);
-          resultBox.value = `Error calling Puter.com API: ${err.message || 'Unknown error'}.`;
+          console.error("Error calling Puter.com API:", err); // Keep this for console debugging
+
+          let errorMessage = 'Unknown error.';
+          if (err && typeof err === 'object') {
+            if (err.error && err.error.message) {
+              errorMessage = err.error.message; // This captures the 'Permission denied' message
+            } else if (err.message) {
+              errorMessage = err.message; // Fallback for standard JS errors
+            } else {
+              // If the error object has other properties, stringify it for debugging
+              errorMessage = JSON.stringify(err, null, 2); // Use null, 2 for pretty printing
+            }
+          } else if (typeof err === 'string') {
+            errorMessage = err; // If the error is just a string
+          }
+
+          resultBox.value = `Error calling Puter.com API: ${errorMessage}`;
           resultBox.classList.add('error-text');
           autoResizeTextarea(resultBox);
         }
