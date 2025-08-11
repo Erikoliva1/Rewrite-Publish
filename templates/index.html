@@ -225,13 +225,14 @@
       .button-group .action-btn {
         width: 100%; /* Take full width when stacked */
         min-width: unset; /* Reset min-width from desktop */
-        /* Add specific styles to ensure text visibility */
         padding: 10px; /* Adjust padding for mobile */
         font-size: 14px; /* Slightly smaller font for mobile buttons */
         white-space: normal; /* Allow text to wrap */
         text-align: center; /* Center text */
-        /* You might need to experiment with min-height if text wraps to multiple lines */
         min-height: 40px; /* Ensure a minimum height for the button */
+        /* NEW/IMPROVED: Ensure text is visible and breaks correctly */
+        overflow: visible; /* Ensure text is not clipped */
+        word-break: break-word; /* Break long words if necessary */
       }
     }
   </style>
