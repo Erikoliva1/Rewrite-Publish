@@ -221,19 +221,39 @@
       textarea#news { font-size: 15px; padding: 10px; min-height: 150px; }
       .publish-button-group { flex-direction: column; }
       .button-group .action-btn { 
-        width: 100%; 
-        min-width: unset; 
-        font-size: 14px;
-        padding: 12px 8px;
-        white-space: normal;
-        word-wrap: break-word;
-        overflow: visible;
-        text-overflow: unset;
-        display: block;
-        text-align: center;
-        line-height: 1.3;
-        height: auto;
-        min-height: 44px;
+        width: 100% !important; 
+        min-width: unset !important; 
+        font-size: 16px !important;
+        padding: 15px 12px !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+        display: block !important;
+        text-align: center !important;
+        line-height: 1.4 !important;
+        height: auto !important;
+        min-height: 50px !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 6px !important;
+        cursor: pointer !important;
+        font-weight: bold !important;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+      }
+      
+      /* Ensure button text is visible with specific background colors */
+      .button-group .action-btn[style*="007bff"] { 
+        background-color: #007bff !important;
+        color: white !important;
+      }
+      .button-group .action-btn[style*="28a745"] { 
+        background-color: #28a745 !important;
+        color: white !important;
+      }
+      .button-group .action-btn[style*="ffc107"] { 
+        background-color: #ffc107 !important;
+        color: #333 !important;
       }
     }
   </style>
