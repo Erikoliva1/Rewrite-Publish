@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Response, Depends
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Response, Depends, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from models import NewsRequest, PublishRequest
 from pydantic import BaseModel
 from api_clients import process_article
-from publish import publish_news_to_wordpress
+from publish import publish_news_to_wordpress, get_wordpress_categories
 import aiohttp
 import logging
 import traceback
@@ -14,6 +14,7 @@ import base64
 import hashlib
 import secrets
 from passlib.hash import bcrypt
+from config import settings # Import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -23,11 +24,14 @@ os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 
 SESSION_TOKEN_NAME = "app_session"
 SESSION_TOKEN_LENGTH = 32
-SESSION_TOKEN_FILE = os.getenv("SESSION_TOKEN_FILE", "session_token.txt")
+SESSION_TOKEN_EXPIRY_SECONDS = 3600 * 24 # 24 hours
 
 def get_html_file_path(filename: str):
+    # Prioritize 'static' directory for HTML files
     possible_paths = [
-        os.path.join(os.path.dirname(__file__), 'templates', filename),
+        os.path.join(os.getcwd(), 'static', filename), # Common for static files
+        os.path.join(os.path.dirname(__file__), 'static', filename),
+        os.path.join(os.path.dirname(__file__), 'templates', filename), # Fallback for older structure
         os.path.join(os.path.dirname(__file__), '..', 'templates', filename),
         os.path.join(os.getcwd(), 'templates', filename),
         os.path.join(os.getcwd(), filename)
@@ -41,7 +45,9 @@ async def verify_authentication(request: Request):
     session_token = request.cookies.get(SESSION_TOKEN_NAME)
     if not session_token or session_token != request.app.state.valid_session_token:
         logger.info("Unauthenticated access attempt. Redirecting to login.")
-        raise HTTPException(status_code=302, detail="Not authenticated", headers={"Location": "/login"})
+        # Use RedirectResponse for proper HTTP redirect
+        response = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+        raise HTTPException(status_code=status.HTTP_302_FOUND, detail="Not authenticated", headers={"Location": "/login"})
     return True
 
 class LoginRequest(BaseModel):
@@ -58,7 +64,7 @@ async def login_page(request: Request):
 
 @router.post("/login")
 async def perform_login(login_request: LoginRequest, request: Request, response: Response):
-    stored_password_hash = request.app.state.access_password_hash
+    stored_password_hash = request.app.state.settings.ACCESS_PASSWORD_HASH
 
     if not stored_password_hash:
         logger.error("ACCESS_PASSWORD_HASH is not set in app state. Cannot verify password.")
@@ -81,18 +87,42 @@ async def perform_login(login_request: LoginRequest, request: Request, response:
         request.app.state.valid_session_token = new_session_token
 
         try:
-            with open(SESSION_TOKEN_FILE, "w") as f:
+            with open(request.app.state.settings.SESSION_TOKEN_FILE, "w") as f:
                 f.write(new_session_token)
-            logger.info(f"New session token saved to {SESSION_TOKEN_FILE}")
+            logger.info(f"New session token saved to {request.app.state.settings.SESSION_TOKEN_FILE}")
         except IOError as e:
-            logger.error(f"Failed to save session token to file {SESSION_TOKEN_FILE}: {e}")
+            logger.error(f"Failed to save session token to file {request.app.state.settings.SESSION_TOKEN_FILE}: {e}")
 
-        response.set_cookie(key=SESSION_TOKEN_NAME, value=new_session_token, httponly=True, samesite="lax", secure=True)
+        response.set_cookie(
+            key=SESSION_TOKEN_NAME,
+            value=new_session_token,
+            httponly=True,
+            samesite="lax",
+            secure=True,
+            max_age=SESSION_TOKEN_EXPIRY_SECONDS # Set cookie expiry
+        )
         logger.info("Login successful. Session cookie set.")
         return {"message": "Login successful"}
     else:
         logger.warning("Login failed: Invalid password provided.")
         raise HTTPException(status_code=401, detail="Invalid password.")
+
+@router.post("/logout")
+async def perform_logout(request: Request, response: Response):
+    # Invalidate the current session token in memory and file
+    request.app.state.valid_session_token = secrets.token_urlsafe(SESSION_TOKEN_LENGTH)
+    try:
+        with open(request.app.state.settings.SESSION_TOKEN_FILE, "w") as f:
+            f.write(request.app.state.valid_session_token)
+        logger.info(f"New random token written to {request.app.state.settings.SESSION_TOKEN_FILE} on logout.")
+    except IOError as e:
+        logger.error(f"Failed to write new random token to file {request.app.state.settings.SESSION_TOKEN_FILE} on logout: {e}")
+
+    # Clear the session cookie
+    response.delete_cookie(key=SESSION_TOKEN_NAME, httponly=True, samesite="lax", secure=True)
+    logger.info("Logout successful. Session cookie cleared.")
+    return {"message": "Logout successful"}
+
 
 @router.get("/", response_class=HTMLResponse)
 async def home(authenticated: bool = Depends(verify_authentication)):
@@ -115,40 +145,24 @@ async def home(authenticated: bool = Depends(verify_authentication)):
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
 
 @router.get("/wp-categories", dependencies=[Depends(verify_authentication)])
-async def get_categories_from_wp():
-    wordpress_site_url = os.getenv("WORDPRESS_SITE_URL")
-    wordpress_app_password = os.getenv("WORDPRESS_APP_PASSWORD")
-
-    if not wordpress_site_url or not wordpress_app_password:
-        logger.error("WORDPRESS_SITE_URL or WORDPRESS_APP_PASSWORD environment variables are not set for category fetching.")
-        raise HTTPException(status_code=500, detail="Server configuration error: WordPress credentials missing for categories.")
-
+async def get_categories_from_wp_route():
     try:
         categories_list = []
-        categories_url = f"{wordpress_site_url}/wp-json/wp/v2/categories?per_page=100"
-
-        auth_string = wordpress_app_password
-        encoded_auth = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
-
-        headers = {
-            'Authorization': f'Basic {encoded_auth}',
-            'Content-Type': 'application/json',
-            'User-Agent': 'NewsRewriteApp/1.0'
-        }
-        response = requests.get(categories_url, headers=headers, timeout=10)
-        response.raise_for_status()
-        categories_data = response.json()
-        for cat in categories_data:
-            categories_list.append({"id": cat['id'], "name": cat['name'], "slug": cat['slug']})
+        # Use the get_wordpress_categories function from publish.py
+        wp_categories_map = get_wordpress_categories(
+            settings.WORDPRESS_SITE_URL,
+            settings.WORDPRESS_APP_PASSWORD
+        )
+        for name, id_val in wp_categories_map.items():
+            # Note: get_wordpress_categories only returns name:id. Slug is not available directly.
+            # If slug is critical, you'd need a more detailed WP API call or cache.
+            categories_list.append({"id": id_val, "name": name, "slug": name.lower().replace(" ", "-")}) # Placeholder slug
 
         return categories_list
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching categories from WordPress: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch categories from WordPress: {e}")
     except Exception as e:
-        logger.error(f"An unexpected error occurred while fetching categories: {e}")
+        logger.error(f"Error fetching categories from WordPress: {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="An unexpected error occurred while fetching categories.")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch categories from WordPress: {str(e)}")
 
 @router.post("/rewrite", dependencies=[Depends(verify_authentication)])
 async def rewrite(request: NewsRequest):
@@ -202,21 +216,18 @@ async def rewrite(request: NewsRequest):
 
 @router.post("/upload-image", dependencies=[Depends(verify_authentication)])
 async def upload_image(file: UploadFile = File(...)):
-    wordpress_site_url = os.getenv("WORDPRESS_SITE_URL")
-    wordpress_app_password = os.getenv("WORDPRESS_APP_PASSWORD")
-
-    if not wordpress_site_url or not wordpress_app_password:
+    if not settings.WORDPRESS_SITE_URL or not settings.WORDPRESS_APP_PASSWORD:
         logger.error("WORDPRESS_SITE_URL or WORDPRESS_APP_PASSWORD environment variables are not set for image upload.")
         raise HTTPException(status_code=500, detail="Server configuration error: WordPress credentials missing.")
 
-    upload_url = f"{wordpress_site_url}/wp-json/wp/v2/media"
+    upload_url = f"{settings.WORDPRESS_SITE_URL}/wp-json/wp/v2/media"
     temp_file_path = None
 
     try:
         file_content = await file.read()
         file_size = len(file_content)
         logger.info(f"Received file: {file.filename}, size: {file_size} bytes, content-type: {file.content_type}")
-        logger.info(f"FastAPI received content SHA256 (first 1KB): {hashlib.sha256(file_content[:1024]).hexdigest()}")
+        logger.debug(f"FastAPI received content SHA256 (first 1KB): {hashlib.sha256(file_content[:1024]).hexdigest()}")
 
         original_filename = file.filename if file.filename else "uploaded_file"
         file_extension = os.path.splitext(original_filename)[1]
@@ -234,10 +245,10 @@ async def upload_image(file: UploadFile = File(...)):
         logger.info(f"Saved temporary file to: {temp_file_path}")
         with open(temp_file_path, "rb") as check_buffer:
             temp_file_content_check = check_buffer.read()
-            logger.info(f"Temp file content SHA256 (first 1KB, from disk): {hashlib.sha256(temp_file_content_check[:1024]).hexdigest()}")
-            logger.info(f"Temp file size on disk: {os.path.getsize(temp_file_path)} bytes")
+            logger.debug(f"Temp file content SHA256 (first 1KB, from disk): {hashlib.sha256(temp_file_content_check[:1024]).hexdigest()}")
+            logger.debug(f"Temp file size on disk: {os.path.getsize(temp_file_path)} bytes")
 
-        auth_string = wordpress_app_password
+        auth_string = settings.WORDPRESS_APP_PASSWORD
         encoded_auth = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
 
         actual_content_type = file.content_type if file.content_type else "application/octet-stream"
@@ -257,8 +268,14 @@ async def upload_image(file: UploadFile = File(...)):
             logger.info(f"Image uploaded to WordPress successfully. Media ID: {wp_data.get('id')}")
             return {"message": "Image uploaded successfully", "id": wp_data.get("id")}
         else:
-            logger.error(f"WordPress media upload failed with status {wp_response.status_code}: {wp_response.text}")
-            raise HTTPException(status_code=wp_response.status_code, detail=f"WordPress upload failed: {wp_response.text}")
+            error_detail = f"WordPress upload failed: Status {wp_response.status_code}. "
+            try:
+                error_json = wp_response.json()
+                error_detail += f"Message: {error_json.get('message', 'No message provided.')}"
+            except json.JSONDecodeError:
+                error_detail += f"Response: {wp_response.text[:200]}..."
+            logger.error(error_detail)
+            raise HTTPException(status_code=wp_response.status_code, detail=error_detail)
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Error connecting to WordPress for image upload: {e}")
@@ -282,18 +299,20 @@ async def publish(request: PublishRequest):
         featured_image_id = request.featured_image_id
         categories = request.categories
         tags = request.tags
+        post_status = request.post_status # Get post status from request
 
         if not news_content.strip():
             logger.warning("Publish request received with empty news content.")
             raise HTTPException(status_code=400, detail="News content cannot be empty")
 
-        logger.info("Calling publish_news_to_wordpress function to publish news with additional metadata.")
+        logger.info(f"Calling publish_news_to_wordpress function to publish news with status: {post_status}")
 
         publish_data = {
             "news": news_content,
             "featured_image_id": featured_image_id,
             "categories": categories,
-            "tags": tags
+            "tags": tags,
+            "post_status": post_status # Pass post status
         }
 
         result = publish_news_to_wordpress(publish_data)
