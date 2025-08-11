@@ -9,4 +9,5 @@ requests
 brotli
 python-multipart
 passlib
-bcrypt # ADD THIS LINE
+bcrypt
+pydantic-settings
