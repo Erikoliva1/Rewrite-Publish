@@ -158,7 +158,7 @@
       border-radius: 6px;
       cursor: pointer;
       transition: background-color 0.2s ease-in-out;
-      min-width: 150px; /* Default min-width for desktop */
+      min-width: 150px;
     }
     .action-btn:hover { opacity: 0.9; }
 
@@ -220,19 +220,17 @@
       .creator-info { font-size: 11px; }
       textarea#news { font-size: 15px; padding: 10px; min-height: 150px; }
       .publish-button-group { flex-direction: column; }
-
-      /* UPDATED: Ensure action buttons have enough space for text on mobile */
-      .button-group .action-btn {
-        width: 100% !important; /* Force full width */
-        min-width: unset !important; /* Remove min-width constraint */
-        padding: 10px !important; /* Adjust padding for mobile */
-        font-size: 14px !important; /* Slightly smaller font for mobile buttons */
-        white-space: normal !important; /* Allow text to wrap */
-        text-align: center !important; /* Center text */
-        min-height: 40px !important; /* Ensure a minimum height for the button */
-        overflow: visible !important; /* Ensure text is not clipped */
-        word-break: break-word !important; /* Break long words if necessary */
-        box-sizing: border-box !important; /* Ensure padding is included in width */
+      .button-group .action-btn { 
+        width: 100%; 
+        min-width: unset; 
+        font-size: 15px;
+        padding: 15px 10px;
+        white-space: nowrap;
+        overflow: visible;
+        text-overflow: clip;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
     }
   </style>
@@ -750,7 +748,7 @@
             case "puter_qwen_2_5_72b_instruct_turbo": modelName = "Qwen/Qwen2.5-72B-Instruct-Turbo"; break;
             case "puter_qwen_3_235b_a22b_instruct_2507_tput": modelName = "Qwen/Qwen3-235B-A22B-Instruct-2507-tput"; break;
             case "puter_qwen_3_coder_480b_a35b_instruct_fp8": modelName = "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8"; break;
-            case "puter_openrouter_deepseek_r1_0528_free": modelName = "openrouter:deepseek/deepseek-r1-0528:free"; break; // Added new model to list
+            case "puter_openrouter_deepseek_r1_0528_free": modelName = "openrouter:deepseek/deepseek-r1-0528:free"; break; // Added new model mapping
             default: modelName = ""; // Should not happen due to includes check
           }
 
