@@ -10,3 +10,4 @@ class PublishRequest(BaseModel):
     featured_image_id: Optional[int] = None
     categories: List[str] = []
     tags: List[str] = []
+    post_status: str = "publish" # Added for draft/publish option
