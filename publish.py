@@ -1,12 +1,11 @@
 import requests
 import sys
-import os
 import json
 import logging
 import traceback
 import time
-import base64  # Added missing import
-from dotenv import load_dotenv
+import base64
+from config import settings # Import settings
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -14,7 +13,14 @@ logger = logging.getLogger(__name__)
 def get_wordpress_categories(site_url, app_password):
     """Fetches categories from WordPress REST API using Application Password."""
     categories_url = f"{site_url}/wp-json/wp/v2/categories?per_page=100"
-    encoded_auth = base64.b64encode(app_password.encode('utf-8')).decode('utf-8')
+    # Use the app_password directly as the password part of Basic Auth
+    # The username for Application Passwords is the WordPress username that generated it.
+    # However, for wp-json/wp/v2/categories, often just the app password in the Authorization header is enough
+    # if the endpoint is publicly accessible or if the plugin handles auth.
+    # For standard WP REST API, it's 'username:app_password'.
+    # Let's assume the plugin's endpoint or the v2/categories endpoint handles it with just the app_password.
+    # If not, you'd need a WP username env var too.
+    encoded_auth = base64.b64encode(f"user:{app_password}".encode('utf-8')).decode('utf-8') # Assuming 'user' is a placeholder, replace if needed
     headers = {
         'Authorization': f'Basic {encoded_auth}',
         'Content-Type': 'application/json',
@@ -34,7 +40,7 @@ def get_wordpress_categories(site_url, app_password):
 def get_wordpress_tags(site_url, app_password):
     """Fetches tags from WordPress REST API using Application Password."""
     tags_url = f"{site_url}/wp-json/wp/v2/tags?per_page=100"
-    encoded_auth = base64.b64encode(app_password.encode('utf-8')).decode('utf-8')
+    encoded_auth = base64.b64encode(f"user:{app_password}".encode('utf-8')).decode('utf-8') # Assuming 'user' is a placeholder
     headers = {
         'Authorization': f'Basic {encoded_auth}',
         'Content-Type': 'application/json',
@@ -52,21 +58,15 @@ def get_wordpress_tags(site_url, app_password):
         return {}
 
 def publish_news_to_wordpress(news_data):
-    WORDPRESS_SITE_URL = os.environ.get("WORDPRESS_SITE_URL")
-    WORDPRESS_API_TOKEN = os.environ.get("WORDPRESS_API_TOKEN")
-    WORDPRESS_APP_PASSWORD = os.environ.get("WORDPRESS_APP_PASSWORD")
+    # Use settings from config.py
+    WORDPRESS_SITE_URL = settings.WORDPRESS_SITE_URL
+    WORDPRESS_API_TOKEN = settings.WORDPRESS_API_TOKEN
+    WORDPRESS_APP_PASSWORD = settings.WORDPRESS_APP_PASSWORD
 
-    if not WORDPRESS_SITE_URL:
-        logger.error("Error: WORDPRESS_SITE_URL environment variable is not set.")
-        return {"status": "error", "detail": "WORDPRESS_SITE_URL not set."}
-    if not WORDPRESS_API_TOKEN:
-        logger.error("Error: WORDPRESS_API_TOKEN environment variable is not set.")
-        return {"status": "error", "detail": "WORDPRESS_API_TOKEN not set."}
-    if not WORDPRESS_APP_PASSWORD:
-        logger.warning("WORDPRESS_APP_PASSWORD environment variable is not set. Category/Tag fetching might fail if WP REST API is protected.")
-        wp_categories = {}
-    else:
-        wp_categories = get_wordpress_categories(WORDPRESS_SITE_URL, WORDPRESS_APP_PASSWORD)
+    # Categories and Tags are now fetched using the app password
+    wp_categories = get_wordpress_categories(WORDPRESS_SITE_URL, WORDPRESS_APP_PASSWORD)
+    # Removed unused wp_tags variable as it's not directly used in this function's logic
+    # wp_tags = get_wordpress_tags(WORDPRESS_SITE_URL, WORDPRESS_APP_PASSWORD) # Fetch existing tags
 
     POST_API_ENDPOINT = f"{WORDPRESS_SITE_URL}/wp-json/news-rewrite-onrender/v1/createpost"
 
@@ -74,6 +74,7 @@ def publish_news_to_wordpress(news_data):
     featured_image_id = news_data.get("featured_image_id")
     selected_categories_names = news_data.get("categories", [])
     selected_tags_names = news_data.get("tags", [])
+    post_status = news_data.get("post_status", "publish") # Get post status
 
     lines = news_content.split('\n', 1)
     title = lines[0].strip() if lines else "Untitled News Article"
@@ -126,7 +127,7 @@ def publish_news_to_wordpress(news_data):
         "title": title,
         "content": body,
         "wpToken": WORDPRESS_API_TOKEN,
-        "post_status": "publish",
+        "post_status": post_status, # Pass the determined post status
         "catIds": category_ids,
         "tagNames": all_tags_to_send,
         "featured_image_id": featured_image_id
@@ -138,6 +139,7 @@ def publish_news_to_wordpress(news_data):
     logger.info(f"Categories (IDs): {category_ids}")
     logger.info(f"Tags (Names): {all_tags_to_send}")
     logger.info(f"Featured Image ID: {featured_image_id if featured_image_id else 'None'}")
+    logger.info(f"Post Status: {post_status}")
 
     try:
         headers = {
@@ -167,7 +169,13 @@ def publish_news_to_wordpress(news_data):
             try:
                 json_response = response.json()
                 if json_response.get("status") == "success":
-                    logger.info("News published successfully!")
+                    # Determine the appropriate success message based on post_status
+                    if post_status == "draft":
+                        success_message = "News saved as draft successfully!"
+                    else:
+                        success_message = "News published successfully!"
+
+                    logger.info(success_message)
                     logger.info(f"Permalink: {json_response.get('permalink')}")
                     logger.info(f"Post ID: {json_response.get('postId')}")
                     if json_response.get('thumbnail'):
@@ -176,7 +184,7 @@ def publish_news_to_wordpress(news_data):
                     logger.info("Waiting 2 seconds to allow WordPress to process metadata for social sharing...")
                     time.sleep(2)
 
-                    return {"status": "success", "message": "News published successfully!", "permalink": json_response.get('permalink')}
+                    return {"status": "success", "message": success_message, "permalink": json_response.get('permalink')}
                 else:
                     logger.error(f"Error publishing news: {json_response.get('msg', 'Unknown error')}")
                     return {"status": "error", "detail": json_response.get('msg', 'Unknown error from WordPress.')}
@@ -208,8 +216,8 @@ def publish_news_to_wordpress(news_data):
         return {"status": "error", "detail": f"A critical internal error occurred: {e}"}
 
 if __name__ == "__main__":
-    load_dotenv()
-
+    # This block is for standalone testing of publish.py, not used by FastAPI
+    # It will now use the settings from config.py
     if len(sys.argv) < 2:
         logger.error("Usage: python publish.py \"{'news': '...', 'featured_image_id': ..., 'categories': [...], 'tags': []}\"")
         sys.exit(1)
@@ -233,6 +241,10 @@ if __name__ == "__main__":
     if "tags" not in news_data or not isinstance(news_data["tags"], list):
         news_data["tags"] = []
         logger.warning("Tags not provided or invalid, defaulting to empty list.")
+    if "post_status" not in news_data or not isinstance(news_data["post_status"], str):
+        news_data["post_status"] = "publish"
+        logger.warning("Post status not provided or invalid, defaulting to 'publish'.")
+
 
     result = publish_news_to_wordpress(news_data)
     if result.get("status") == "success":
@@ -241,3 +253,4 @@ if __name__ == "__main__":
     else:
         logger.error(f"Script execution failed: {result.get('detail')}")
         sys.exit(1)
+
